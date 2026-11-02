@@ -289,7 +289,8 @@ export default function SourceVerificationPanel({
             {documentName}
           </p>
           <p className="text-xs text-text-secondary">
-            Page {currentPage} of {pageCount}
+            {/* A one-page web or text file has no pages to count. */}
+            {textOnly && pageCount <= 1 ? "Extracted text" : `Page ${currentPage} of ${pageCount}`}
             {selectedLabel ? ` · ${selectedLabel}` : ""}
           </p>
           {selectedValue ? (
@@ -299,7 +300,7 @@ export default function SourceVerificationPanel({
             </p>
           ) : (
             <p className="mt-1 text-xs text-text-muted">
-              Click a result to jump to its evidence in the PDF.
+              Click a field or row to find its evidence in the {textOnly ? "text" : "document"}.
             </p>
           )}
         </div>

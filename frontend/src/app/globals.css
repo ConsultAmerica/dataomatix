@@ -293,6 +293,9 @@ body {
   color: var(--border);
 }
 
+/* In the components layer, so a call site's own padding, size or width
+   utilities (px-3 py-2 text-sm) win over these defaults. */
+@layer components {
 .btn-primary {
   display: inline-flex;
   align-items: center;
@@ -345,6 +348,7 @@ body {
 
 .btn-tertiary:hover {
   color: var(--primary-hover);
+}
 }
 
 .chip {

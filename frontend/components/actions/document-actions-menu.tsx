@@ -57,7 +57,7 @@ export default function DocumentActionsMenu({ documentId }: { documentId: string
         onClick={() => setOpen((value) => !value)}
         aria-haspopup="menu"
         aria-expanded={open}
-        className="btn-secondary px-3 py-2 text-sm"
+        className="btn-secondary h-9 px-3 py-0 text-sm"
         data-testid="document-actions-trigger"
       >
         <Sparkles className="h-3.5 w-3.5" />
