@@ -1,3 +1,4 @@
+import re
 from datetime import datetime, timezone
 from hashlib import sha256
 from pathlib import Path
@@ -46,7 +47,7 @@ from app.schemas.document import (
 )
 from app.staging.document_categories import category_counts, filter_by_category, ordered_counts
 from app.staging.document_labels import document_labels
-from app.services.document_deletion import delete_documents
+from app.services.document_deletion import delete_documents, discard_refused_upload
 from app.services.document_intake import (
     IntakeFields,
     IntakeValidationError,
@@ -104,6 +105,7 @@ from app.services.security_validation import (
     UploadTypeSpec,
     resolve_upload_type,
     validate_docx_structure,
+    validate_image_structure,
     validate_ods_structure,
     validate_pptx_structure,
     validate_signature,
@@ -278,6 +280,8 @@ def _extract_metadata(
         )
 
     # Raster images (png/jpg/tiff/bmp/webp): single page via OCR path.
+    if spec.kind == "image":
+        validate_image_structure(file_path)
     return PDFMetadata(
         page_count=1,
         encrypted=False,
@@ -320,17 +324,55 @@ def _create_document_record(
     return document, uploaded_at
 
 
+def _discard_created(database: Session, document_id: str | None) -> None:
+    """The record a refused upload had already saved, with its rows and file."""
+
+    if document_id is None:
+        return
+    try:
+        discard_refused_upload(database, document_id)
+    except Exception as exc:  # noqa: BLE001 - the refusal itself is still reported
+        log_event("refused_upload_cleanup_failed", stage="upload", status="error",
+                  document_id=document_id, error_type=type(exc).__name__)
+
+
+_KIND_LABELS = {"text": "text", "csv": "CSV", "html": "HTML", "json": "JSON", "xml": "XML", "rtf": "RTF",
+                "docx": "DOCX", "xlsx": "XLSX", "ods": "ODS", "pptx": "PPTX"}
+# Formats that are nothing but text: one with none is an empty upload.
+_TEXT_ONLY_KINDS = frozenset({"text", "csv", "html", "rtf"})
+
+
 def _ingest_native_pages(
     database: Session,
     document_id: UUID,
     file_path: Path,
     spec: UploadTypeSpec,
 ) -> int:
-    """Native text/table ingest into the common DocumentPage model."""
+    """Native text/table ingest into the common DocumentPage model. A file
+    its parser can't read, or a text file with nothing to read, is refused
+    with the cause rather than failing as a storage error."""
 
-    page_count = ingest_native_document(
-        database, document_id, file_path, spec
-    )
+    try:
+        page_count = ingest_native_document(
+            database, document_id, file_path, spec
+        )
+    except (SecurityValidationError, UploadValidationError):
+        raise
+    except Exception as exc:  # noqa: BLE001 - the parser's own cause is reported
+        database.rollback()
+        cause = str(exc).strip().splitlines()[0][:160] if str(exc).strip() else type(exc).__name__
+        raise SecurityValidationError(
+            f"The file could not be read as {_KIND_LABELS.get(spec.kind, spec.kind.upper())} ({cause})."
+        ) from exc
+    # Readable: a letter or digit, not only cell separators or markup spacing.
+    if spec.kind in _TEXT_ONLY_KINDS and not any(
+        re.search(r"\w", text or "")
+        for text in database.scalars(
+            select(DocumentPage.final_text).where(DocumentPage.document_id == str(document_id))
+        )
+    ):
+        database.rollback()
+        raise SecurityValidationError("The file has no readable text.")
 
     document = database.get(Document, str(document_id))
     if document is not None:
@@ -381,6 +423,8 @@ async def upload_document(
     except IntakeValidationError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
+    # The record this request saves; removed again if the file is refused.
+    created_id: str | None = None
     try:
         display_filename, spec = validate_upload_metadata(file)
         assert_legacy_office_supported(spec)
@@ -523,6 +567,7 @@ async def upload_document(
             metadata=metadata,
             owner_workspace=actor.workspace,
         )
+        created_id = str(document_id)
         if upsert_intake(database, str(document_id), intake, actor.id) is not None:
             log.append("Recorded intake tags")
         bind_job_context(document_id=str(document_id))
@@ -654,6 +699,7 @@ async def upload_document(
         raise
 
     except UploadValidationError as exc:
+        _discard_created(database, created_id)
         if destination is not None:
             destination.unlink(missing_ok=True)
 
@@ -663,6 +709,7 @@ async def upload_document(
         ) from exc
 
     except SecurityValidationError as exc:
+        _discard_created(database, created_id)
         if destination is not None:
             destination.unlink(missing_ok=True)
 
@@ -672,6 +719,7 @@ async def upload_document(
         ) from exc
 
     except PDFValidationError as exc:
+        _discard_created(database, created_id)
         if destination is not None:
             destination.unlink(missing_ok=True)
 
@@ -692,6 +740,7 @@ async def upload_document(
         ) from exc
 
     except DocumentStorageError as exc:
+        _discard_created(database, created_id)
         size_for_log = None
         if destination is not None and destination.exists():
             size_for_log = destination.stat().st_size
@@ -717,6 +766,7 @@ async def upload_document(
         ) from exc
 
     except Exception as exc:
+        _discard_created(database, created_id)
         size_for_log = None
         if destination is not None and destination.exists():
             size_for_log = destination.stat().st_size
@@ -858,6 +908,8 @@ async def resolve_duplicate(
 
     log = ["Re-validated the staged file"]
 
+    # The record this request saves; removed again if the file is refused.
+    created_id: str | None = None
     try:
         metadata = _extract_metadata(spec, destination)
         log.append(f"Extracted {spec.kind.upper()} metadata")
@@ -880,6 +932,7 @@ async def resolve_duplicate(
             # The staged upload's owner (checked on the path already).
             owner_workspace=staged_owner(database, str(document_id)) or actor.workspace,
         )
+        created_id = str(document_id)
         upload_object(
             settings,
             destination.name,
@@ -921,6 +974,7 @@ async def resolve_duplicate(
         )
 
     except (PDFValidationError, SecurityValidationError) as exc:
+        _discard_created(database, created_id)
         destination.unlink(missing_ok=True)
 
         raise HTTPException(
@@ -929,6 +983,7 @@ async def resolve_duplicate(
         ) from exc
 
     except Exception as exc:
+        _discard_created(database, created_id)
         destination.unlink(missing_ok=True)
         database.rollback()
 
@@ -966,6 +1021,8 @@ async def select_portfolio_file(
 
     log = ["Selected embedded document from PDF Portfolio"]
 
+    # The record this request saves; removed again if the file is refused.
+    created_id: str | None = None
     try:
         extract_named_embedded_pdf(
             destination,
@@ -1024,6 +1081,7 @@ async def select_portfolio_file(
             # The staged upload's owner (checked on the path already).
             owner_workspace=staged_owner(database, str(document_id)) or actor.workspace,
         )
+        created_id = str(document_id)
         upload_object(
             settings,
             destination.name,
@@ -1052,12 +1110,14 @@ async def select_portfolio_file(
         )
 
     except (PDFValidationError, SecurityValidationError) as exc:
+        _discard_created(database, created_id)
         raise HTTPException(
             status_code=422,
             detail=str(exc),
         ) from exc
 
     except Exception as exc:
+        _discard_created(database, created_id)
         database.rollback()
 
         raise HTTPException(

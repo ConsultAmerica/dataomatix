@@ -96,6 +96,8 @@ export interface LayoutField {
   field_name?: string;
   /** The first field of its item: the only row showing the item's number and name. */
   item_start?: boolean;
+  /** A sub-field's printed letter under its item ("A" in "10 → A. NAME"). */
+  sub_item?: string | null;
   /** Its item's id, else its section's id. */
   parent_id?: string;
   quality?: QualityCode;
@@ -228,6 +230,8 @@ export interface OriginalStructure {
   document_context?: TableContext[];
   quality_labels?: Record<QualityCode, string>;
   unplaced: LayoutField[];
+  /** Reviews this reading can't place on one field with certainty: kept and listed. */
+  unattached_reviews?: { record_key: string; status: string; original_value: unknown; reviewed_value: unknown }[];
   stats: {
     sections: number;
     fields: number;

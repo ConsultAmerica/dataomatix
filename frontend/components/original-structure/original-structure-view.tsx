@@ -127,13 +127,14 @@ export interface FieldLine {
 /** How a field reads in Item # | Field Name | Extracted Value, as the
  * backend layout decided its item (never re-derived here) and exactly as
  * the Excel export writes it. `previous` is the item of the row above. */
-export function fieldLine(field: Pick<LayoutField, "item" | "field_name" | "label">, previous: string | null): FieldLine {
+export function fieldLine(field: Pick<LayoutField, "item" | "field_name" | "label" | "sub_item">, previous: string | null): FieldLine {
   const item = field.item;
   const name = field.field_name ?? field.label;
   if (!item) return { caption: null, number: "", name, indent: false };
   const first = item.id !== previous;
   if (item.has_subfields && item.name) {
-    return { caption: first ? { id: item.id, number: item.number, name: item.name } : null, number: "", name, indent: true };
+    // A sub-field shows its own printed letter ("A") under its item's row.
+    return { caption: first ? { id: item.id, number: item.number, name: item.name } : null, number: field.sub_item ?? "", name, indent: true };
   }
   return { caption: null, number: first ? item.number : "", name, indent: !first };
 }
@@ -349,6 +350,12 @@ export default function OriginalStructureView({
               <span className="text-text-muted" data-testid="form-duplicates-hidden"
                 title="Rows the text extractor read from a form's boxes or printed wording. The form's own boxes are shown instead; the records are kept.">
                 · {stats.form_duplicates_hidden} repeated form reading{stats.form_duplicates_hidden === 1 ? "" : "s"} hidden
+              </span>
+            )}
+            {(data.unattached_reviews?.length ?? 0) > 0 && (
+              <span className="text-warning" data-testid="unattached-reviews"
+                title={`Earlier reviews this reading can't place on one field with certainty — kept, not applied: ${data.unattached_reviews!.map((r) => r.record_key).join(", ")}`}>
+                · {data.unattached_reviews!.length} earlier review{data.unattached_reviews!.length === 1 ? "" : "s"} not matched to a field
               </span>
             )}
             {data.document_title && <span className="text-text-muted">· {data.document_title}</span>}

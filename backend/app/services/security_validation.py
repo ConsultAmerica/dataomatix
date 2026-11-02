@@ -565,6 +565,25 @@ def validate_ods_structure(file_path: Path) -> None:
         )
 
 
+def validate_image_structure(file_path: Path) -> None:
+    """The image decodes: a valid header over damaged or cut-off data is
+    refused at upload, not discovered later as a blank OCR page."""
+
+    from PIL import Image, UnidentifiedImageError
+
+    try:
+        with Image.open(file_path) as image:
+            image.verify()
+        # verify() reads the structure only; decoding the (first) frame
+        # catches truncated pixel data.
+        with Image.open(file_path) as image:
+            image.load()
+    except Image.DecompressionBombError as exc:
+        raise SecurityValidationError("The image is too large to process safely.") from exc
+    except (UnidentifiedImageError, OSError, SyntaxError, ValueError) as exc:
+        raise SecurityValidationError("The image is damaged or incomplete and can't be read.") from exc
+
+
 def validate_pptx_structure(file_path: Path) -> None:
     validate_ooxml_structure(
         file_path, "ppt/presentation.xml", "PPTX"

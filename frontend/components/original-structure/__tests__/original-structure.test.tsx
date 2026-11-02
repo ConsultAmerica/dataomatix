@@ -113,6 +113,10 @@ describe("OriginalStructureView", () => {
       .toEqual({ caption: { id: contract.id, number: "2.", name: "Contract Information" }, number: "", name: "Contract Number", indent: true });
     expect(fieldLine({ label: "Contract Name", field_name: "Contract Name", item: contract }, contract.id))
       .toEqual({ caption: null, number: "", name: "Contract Name", indent: true });
+    // A printed sub-item shows its own letter under its item ("10 → A. NAME").
+    const call = item("10", "FOR INFORMATION CALL");
+    expect(fieldLine({ label: "A. NAME", field_name: "NAME", item: call, sub_item: "A" }, null))
+      .toEqual({ caption: { id: call.id, number: "10", name: "FOR INFORMATION CALL" }, number: "A", name: "NAME", indent: true });
     // Form boxes sharing a number: the number once, on the first.
     const box = { id: "item:s1:11:form", number: "11", name: "", has_subfields: false };
     expect(fieldLine({ label: "11 Enter the Page numbers for Section A", field_name: "Page Numbers for Section A", item: box }, null).number).toBe("11");

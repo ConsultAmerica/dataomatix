@@ -174,7 +174,8 @@ def original_rows(layout: dict[str, Any]) -> list[Row]:
                     # The item's number and name on a row of their own, once.
                     if first:
                         rows.append(Row("item", [parent["number"], parent["name"], ""]))
-                    values, kind = ["", name, value], "subfield"
+                    # A sub-field shows its printed letter ("A") under its item.
+                    values, kind = [item.get("sub_item") or "", name, value], "subfield"
                 elif parent is not None:
                     values = [parent["number"] if first else "", name, value]
                     if not first:

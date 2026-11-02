@@ -3,6 +3,7 @@ extraction and review, with disagreements flagged."""
 
 from __future__ import annotations
 
+from pathlib import Path
 from uuid import uuid4
 
 import fitz
@@ -1170,3 +1171,27 @@ def test_text_cut_into_a_grid_is_set_aside_and_real_tables_kept() -> None:
     assert _is_broken_prose([empty]) and _is_broken_prose([split]) and _is_broken_prose([sparse])
     assert not _is_broken_prose([clauses])
     assert not _is_broken_prose([printed])  # a printed header is always a table
+
+
+SF1442 = Path(__file__).resolve().parents[2] / "reference" / "regression" / "SF1442 Award_N4019223D2803.pdf"
+
+
+@pytest.mark.skipif(not SF1442.exists(), reason="SF1442 reference PDF not available locally")
+def test_numbered_captions_over_their_values_are_fields_not_a_table() -> None:
+    """SF1442 boxes 4-6 line up as three columns: each numbered caption over
+    its value is a field (a blank box stays blank), never a table whose
+    first row is the captions."""
+
+    page = fitz.open(SF1442)[0]
+    result = extract_page_structure(page_number=1, words=native_words(page), extraction_method="native", fitz_page=page)
+    assert not [t for t in result.tables if t.detection_method == "pdf_column_alignment"]
+    # Read box by box (a drawn form) or caption over value: either way fields.
+    fields = {
+        f.label_text: f.raw_value for f in result.fields
+        if f.structural_relation in ("label_above_value", "ruled_form_box") and f.label_text[:2] in ("4.", "5.", "6.")
+    }
+    assert fields == {
+        "4. CONTRACT NO.": "N4019223D2803",
+        "5. REQUISITION/PURCHASE REQUEST NO.": "ACQR5858342",
+        "6. PROJECT NO.": "",
+    }
