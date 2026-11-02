@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
+from functools import lru_cache
 
 from lxml import html as lxml_html
 
@@ -576,6 +577,9 @@ def score_far_structure(
 _PARENT_TOPIC = re.compile(r"Parent topic:\s*Federal Acquisition Regulation", re.I)
 
 
+# Cached by content: one run asks of the same file several times, and a
+# full Part is megabytes of DOM to parse.
+@lru_cache(maxsize=8)
 def recognize_far_part(raw: bytes) -> FarRecognition:
     """Structural evidence that a document IS a FAR Part (not a contract
     that cites FAR clauses): a Part heading, Subpart headings and many

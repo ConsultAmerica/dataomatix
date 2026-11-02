@@ -474,6 +474,14 @@ def _split_fused_bands(
     return bands, grid
 
 
+def _mean_conf(words: list[Word] | None) -> float:
+    """The words' mean OCR confidence; unknown counts as sure, so a pass
+    without confidences is never judged the weaker one."""
+
+    known = [w.conf for w in words or [] if w.conf is not None]
+    return sum(known) / len(known) if known else 1.0
+
+
 def _raster_grid_table(
     ids: "_Ids",
     page_number: int,
@@ -514,7 +522,11 @@ def _raster_grid_table(
             specks = bool(own) and not page_own and all(
                 len(w.text) <= 3 and not any(ch.isdigit() for ch in w.text) for w in own
             )
-            if own and not specks and not (header and page_own):
+            # Where both passes read the cell, the crop wins only when it is
+            # at least as sure: a crop catching its rules ("____870.00" at
+            # 4%) is worse than the page's "570.00" at 96%.
+            weaker = bool(page_own) and _mean_conf(own) < _mean_conf(page_own)
+            if own and not specks and not weaker and not (header and page_own):
                 words.extend(own)
                 continue
             words.extend(page_own)

@@ -104,7 +104,7 @@ export default function BatchIntakePortal({
               onClick={() => onFieldsChange({ ...fields, extraction_profile: profile.profile_id })}
               className={[
                 "flex min-w-0 items-center gap-2 rounded-lg border text-left text-[13px] font-medium transition-colors",
-                auto ? "col-span-full px-3 py-2.5" : "h-9 px-2.5",
+                auto ? "col-span-full px-3 py-2.5" : "min-h-9 px-2.5 py-1.5",
                 checked
                   ? "border-primary bg-primary-soft text-primary ring-1 ring-inset ring-primary"
                   : "border-border bg-surface text-foreground hover:border-primary/40 hover:bg-surface-soft",
@@ -132,7 +132,7 @@ export default function BatchIntakePortal({
                   </span>
                 </span>
               ) : (
-                <span className="min-w-0 flex-1 truncate">{profile.label}</span>
+                <span className="min-w-0 flex-1 leading-tight">{profile.label}</span>
               )}
               {checked && <Check className="h-4 w-4 shrink-0 text-primary" strokeWidth={2.5} aria-hidden="true" />}
             </button>

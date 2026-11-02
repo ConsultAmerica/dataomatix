@@ -125,14 +125,22 @@ def _load_blocks_by_page_id(
     if not page_ids:
         return {}
 
-    rows = database.scalars(
-        select(PageTextBlock).where(PageTextBlock.document_page_id.in_(page_ids))
+    # Plain columns, not ORM rows: a long web source has 100k+ blocks.
+    rows = database.execute(
+        select(
+            PageTextBlock.document_page_id,
+            PageTextBlock.text,
+            PageTextBlock.x0,
+            PageTextBlock.y0,
+            PageTextBlock.x1,
+            PageTextBlock.y1,
+        ).where(PageTextBlock.document_page_id.in_(page_ids))
     )
 
     blocks_by_page_id: dict[int, list[LayoutBlock]] = {}
-    for row in rows:
-        blocks_by_page_id.setdefault(row.document_page_id, []).append(
-            LayoutBlock(text=row.text, x0=row.x0, y0=row.y0, x1=row.x1, y1=row.y1)
+    for page_id, text, x0, y0, x1, y1 in rows:
+        blocks_by_page_id.setdefault(page_id, []).append(
+            LayoutBlock(text=text, x0=x0, y0=y0, x1=x1, y1=y1)
         )
 
     return blocks_by_page_id

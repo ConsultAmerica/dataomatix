@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ChevronDown, Columns2, RefreshCw } from "lucide-react";
+import { ChevronDown, ClipboardCheck, Columns2, RefreshCw, Send } from "lucide-react";
 
 import { useDocumentChrome } from "@/components/layout/document-chrome-context";
 import OracleIntegrationPanel from "@/components/oracle-integration-panel";
@@ -461,7 +461,7 @@ export default function DocumentWorkspace({ documentId }: { documentId: string }
             {filename || workbook.document_filename}
           </h1>
           <p className="mt-1 text-sm text-text-secondary">
-            <span className="text-foreground">{profile.display_name}</span>
+            <span className="text-foreground" data-testid="workspace-profile">{profile.display_name}</span>
             <span className="mx-1.5 text-text-muted">·</span>
             {recordSummary(workbook)}
           </p>
@@ -471,12 +471,6 @@ export default function DocumentWorkspace({ documentId }: { documentId: string }
                 <dt className="text-text-muted">Type</dt>
                 <dd className="font-medium text-foreground" data-testid="workspace-type">
                   {typeLabel}
-                </dd>
-              </div>
-              <div className={TAG}>
-                <dt className="text-text-muted">Profile</dt>
-                <dd className="font-medium text-foreground" data-testid="workspace-profile">
-                  {profile.display_name}
                 </dd>
               </div>
               <div className={TAG}>
@@ -513,10 +507,10 @@ export default function DocumentWorkspace({ documentId }: { documentId: string }
             <RelatedDocumentsSwitcher documentId={documentId} returnQs={returnQs} />
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2" data-testid="workspace-actions">
           <button
             type="button"
-            className="btn-secondary px-3 py-2 text-sm"
+            className={`btn-secondary h-9 px-3 py-0 text-sm ${split ? "border-primary/40 bg-primary/[0.06] text-primary" : ""}`}
             aria-pressed={split}
             onClick={() => setSplitPref(split ? "off" : "on")}
             title="Keep the original document open beside the structured data"
@@ -525,49 +519,41 @@ export default function DocumentWorkspace({ documentId }: { documentId: string }
             <Columns2 className="h-3.5 w-3.5" aria-hidden="true" />
             Split view
           </button>
-          <DocumentActionsMenu documentId={documentId} />
-          <Link
-            href={`/documents/${documentId}/review`}
-            className="btn-secondary px-3 py-2 text-sm"
-            data-testid="open-metadata-review"
-          >
-            Metadata review
-          </Link>
-          <Link
-            href={`/documents/${documentId}/form`}
-            className="btn-secondary px-3 py-2 text-sm"
-            data-testid="open-review-form"
-            title="The review form generated from this document's schema"
-          >
-            Review form
-          </Link>
           <button
             type="button"
             disabled={reprocessing || docStatus === "processing"}
             onClick={() => void reprocess()}
-            className="btn-secondary px-3 py-2 text-sm disabled:opacity-50"
+            className="btn-secondary h-9 px-3 py-0 text-sm disabled:opacity-50"
             aria-label="Reprocess document"
+            title="Run extraction on this document again"
           >
-            <RefreshCw className={`h-3.5 w-3.5 ${reprocessing || docStatus === "processing" ? "animate-spin" : ""}`} />
+            <RefreshCw className={`h-3.5 w-3.5 ${reprocessing || docStatus === "processing" ? "animate-spin" : ""}`} aria-hidden="true" />
             {docStatus === "processing" ? "Processing…" : reprocessing ? "Starting…" : "Reprocess"}
           </button>
-          <Link
-            href={`/mapping/designer?document=${documentId}`}
-            className="btn-secondary px-3 py-2 text-sm"
-            title="Map this document's extracted fields to a registered Oracle Fusion target object"
-            data-testid="map-to-oracle"
-          >
-            Map to Oracle Fusion
-          </Link>
-          <button
-            type="button"
-            className="btn-secondary px-3 py-2 text-sm"
-            aria-pressed={showOracle}
-            onClick={() => setShowOracle((open) => !open)}
-            data-testid="toggle-oracle-panel"
-          >
-            Oracle
-          </button>
+          <DocumentActionsMenu documentId={documentId} />
+          <span className="mx-0.5 hidden h-6 w-px bg-border sm:block" aria-hidden="true" />
+          {/* Oracle: the payload preview and the field mapping, side by side. */}
+          <div className="inline-flex h-9 overflow-hidden rounded-[var(--radius-button)] border border-border bg-surface text-sm" role="group" aria-label="Oracle Fusion">
+            <button
+              type="button"
+              className={`inline-flex items-center gap-1.5 px-3 font-medium ${showOracle ? "bg-primary/[0.08] text-primary" : "text-foreground hover:bg-surface-soft"}`}
+              aria-pressed={showOracle}
+              onClick={() => setShowOracle((open) => !open)}
+              title="Preview the payload that would be sent to Oracle Fusion"
+              data-testid="toggle-oracle-panel"
+            >
+              <Send className="h-3.5 w-3.5" aria-hidden="true" />
+              Oracle
+            </button>
+            <Link
+              href={`/mapping/designer?document=${documentId}`}
+              className="inline-flex items-center border-l border-border px-3 font-medium text-foreground hover:bg-surface-soft"
+              title="Map this document's extracted fields to a registered Oracle Fusion target object"
+              data-testid="map-to-oracle"
+            >
+              Map fields
+            </Link>
+          </div>
           <div className="relative" ref={exportMenuRef}>
             <button
               type="button"
@@ -575,7 +561,7 @@ export default function DocumentWorkspace({ documentId }: { documentId: string }
               aria-haspopup="menu"
               aria-expanded={exportOpen}
               disabled={exportBusy}
-              className="btn-secondary text-sm disabled:opacity-60"
+              className="btn-secondary h-9 px-3 py-0 text-sm disabled:opacity-60"
               data-testid="export-menu-trigger"
             >
               {exportBusy ? "Exporting…" : "Export"}
@@ -763,7 +749,8 @@ export default function DocumentWorkspace({ documentId }: { documentId: string }
                 )}
               </div>
             )}
-            <div className="mt-1 max-w-xs text-right text-xs" aria-live="polite">
+            {/* Below the button, so a notice never shifts the toolbar. */}
+            <div className="absolute right-0 top-full z-10 mt-1 w-64 text-right text-xs" aria-live="polite">
               {exportBusy && <p className="text-text-secondary">Preparing download…</p>}
               {exportNotice && (
                 <p className="text-success" role="status">
@@ -777,6 +764,23 @@ export default function DocumentWorkspace({ documentId }: { documentId: string }
               )}
             </div>
           </div>
+          <Link
+            href={`/documents/${documentId}/review`}
+            className="btn-secondary h-9 px-3 py-0 text-sm"
+            title="Check the document's metadata against the source"
+            data-testid="open-metadata-review"
+          >
+            Metadata review
+          </Link>
+          <Link
+            href={`/documents/${documentId}/form`}
+            className="btn-primary h-9 px-3.5 py-0 text-sm"
+            data-testid="open-review-form"
+            title="The review form generated from this document's schema"
+          >
+            <ClipboardCheck className="h-3.5 w-3.5" aria-hidden="true" />
+            Review form
+          </Link>
         </div>
       </div>
 

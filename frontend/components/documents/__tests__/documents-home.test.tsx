@@ -162,7 +162,7 @@ describe("Documents repository (RC2-02)", { timeout: 15_000 }, () => {
   it("searches and sorts through the API", async () => {
     render(<DocumentsHome />);
     await screen.findByText("05_multipage_stress.pdf");
-    fireEvent.change(screen.getByPlaceholderText(/search name, number, vendor/i), {
+    fireEvent.change(screen.getByPlaceholderText(/search names, numbers, text/i), {
       target: { value: "SF1442" },
     });
     await waitFor(() =>
@@ -207,8 +207,9 @@ describe("Documents repository (RC2-02)", { timeout: 15_000 }, () => {
     expect(within(bar).getByText("4 selected")).toBeTruthy();
     fireEvent.click(within(bar).getByRole("button", { name: "Reprocess selected" }));
     await waitFor(() => expect(startProcessingJob).toHaveBeenCalled());
-    await waitFor(() => expect(screen.getByRole("status").textContent).toMatch(/Reprocess started/));
-    expect(screen.getByRole("status").textContent).toMatch(/failed/);
+    // A refetch strip may announce itself too: read the bulk result's own status.
+    const result = await screen.findByText(/Reprocess started/, { selector: "[role=status], [role=status] *" });
+    expect(result.closest("[role=status]")?.textContent).toMatch(/failed/);
   });
 
   it(
@@ -237,7 +238,7 @@ describe("Documents repository (RC2-02)", { timeout: 15_000 }, () => {
       await waitFor(() => expect(screen.queryByText("05_multipage_stress.pdf")).toBeNull());
       expect(deleteDocuments).toHaveBeenCalledWith(["d1"]);
       expect(await screen.findByText("3,208")).toBeTruthy();
-      expect(screen.getByRole("status").textContent).toContain("1 document deleted");
+      expect(screen.getAllByRole("status").some((el) => el.textContent?.includes("1 document deleted"))).toBe(true);
     },
     15_000,
   );
