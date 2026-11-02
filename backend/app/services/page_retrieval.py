@@ -7,6 +7,7 @@ Used before deterministic extraction and before any AI fallback so a
 from __future__ import annotations
 
 import re
+from functools import lru_cache
 
 from app.models.document_page import DocumentPage
 from app.schemas.document_target import DocumentTarget
@@ -26,6 +27,14 @@ def _tokens(*parts: str) -> set[str]:
 
 def _normalize_label(label: str) -> str:
     return re.sub(r"[^a-z0-9]+", " ", (label or "").lower()).strip()
+
+
+@lru_cache(maxsize=2048)
+def _page_forms(text: str) -> tuple[str, str]:
+    """A page's lower-cased and label-normalized text. Every target ranks
+    the same pages, so each page is normalized once per run, not per target."""
+
+    return text.lower(), _normalize_label(text)
 
 
 def rank_pages_for_target(
@@ -59,8 +68,7 @@ def rank_pages_for_target(
 
     for page in pages:
         score = 0.0
-        text = (page.final_text or "").lower()
-        normalized_text = _normalize_label(page.final_text or "")
+        text, normalized_text = _page_forms(page.final_text or "")
 
         if page.page_number in likely:
             score += 5.0

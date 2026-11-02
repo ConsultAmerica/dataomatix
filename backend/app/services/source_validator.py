@@ -1,5 +1,6 @@
 import re
 import unicodedata
+from functools import lru_cache
 
 _PUNCTUATION_VARIANTS = {
     "‐": "-",  # hyphen
@@ -15,6 +16,9 @@ _PUNCTUATION_VARIANTS = {
 }
 
 
+# Cached: every value checked against a page re-normalizes the same page
+# text, and a one-page web source is megabytes of it.
+@lru_cache(maxsize=32)
 def normalize_text(
     value: str,
 ) -> str:

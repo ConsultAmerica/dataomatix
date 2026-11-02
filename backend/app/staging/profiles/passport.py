@@ -580,7 +580,12 @@ def recognize_passport(database: Session, document: Document) -> Recognition:
     pages = database.scalars(
         select(DocumentPage.final_text).where(DocumentPage.document_id == document.id).order_by(DocumentPage.page_number)
     ).all()
-    lines = [re.sub(r"\s+", "", line).upper() for text in pages for line in (text or "").splitlines()]
+    # Every MRZ line carries "<": a page without one has no MRZ to read.
+    lines = [
+        re.sub(r"\s+", "", line).upper()
+        for text in pages if "<" in (text or "")
+        for line in text.splitlines()
+    ]
     for start in range(len(lines)):
         for size in (3, 2):
             block = lines[start:start + size]

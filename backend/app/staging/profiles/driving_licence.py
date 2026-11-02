@@ -264,6 +264,9 @@ def _printed_label(reading: _Reading, key: str) -> str | None:
     return None
 
 
+_CARD_TEXT_LIMIT = 20_000
+
+
 def recognize_driving_licence(database: Session, document: Document) -> Recognition:
     """The card names itself a driving licence and at least three licence
     field labels are present. Cheap — page text is already stored."""
@@ -274,6 +277,9 @@ def recognize_driving_licence(database: Session, document: Document) -> Recognit
             .order_by(DocumentPage.page_number).limit(2)
         )
     )
+    # A card's text is short: its title and labels are near the top, so a
+    # long page needn't be searched end to end.
+    text = text[:_CARD_TEXT_LIMIT]
     if not _LICENCE_WORDS.search(text):
         return Recognition(0.0, ["no driving licence title"])
     folded = text.lower()
