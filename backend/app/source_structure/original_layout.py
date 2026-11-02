@@ -57,6 +57,7 @@ CONFLICTING_VALUES = "conflicting_values"  # one canonical field, several differ
 PAGE_MISMATCH = "page_mismatch"  # extraction recorded another page for this value
 CELL_COLUMN_MISMATCH = "cell_column_mismatch"  # a cell's value doesn't fit its column
 MISSED_VALUE = "missed_value"  # extraction found nothing where the page shows a value
+UNCLEAR_MARK = "unclear_mark"  # a mark in a printed box sits in none of its tick boxes
 
 FLAG_LABELS = {
     LABEL_VALUE_MISMATCH: "Extraction read a different value for this label",
@@ -65,6 +66,7 @@ FLAG_LABELS = {
     PAGE_MISMATCH: "Extraction recorded a different source page",
     CELL_COLUMN_MISMATCH: "Value doesn't match the rest of its column",
     MISSED_VALUE: "Extraction found no value, but the document shows one",
+    UNCLEAR_MARK: "A mark in this box isn't inside any of its tick boxes; check which option is selected",
 }
 
 # Data quality: what the source and extraction say about a value, apart
@@ -300,7 +302,10 @@ def _usable(candidate: FieldCandidate) -> bool:
 # A form box's built-in description: an instruction around the field's name.
 _FORM_NUMBER = re.compile(r"^(\d{1,3}[A-Za-z]?)[.)]?\s+(?=\S)")
 # A ruled form box's code before its caption: "a ", "1 ", "15 ", "12a ".
-_BOX_CODE_PREFIX = re.compile(r"^(?:[a-z]|\d{1,2}[a-z]?)[.)]?\s+")
+# "a ", "15 ", "12a ", and a drawn form's "12B. " / "12 A. ".
+_BOX_CODE_PREFIX = re.compile(r"^(?:[a-z]|\d{1,3}(?:\s?[A-Za-z])?)[.)]?\s+")
+# Parentheticals closing a box caption: instructions, not the field's name.
+_TRAILING_INSTRUCTION = re.compile(r"(?:\s*\([^()]*\))+\s*$")
 # "(To be completed by the Government)": who fills the box, not its name.
 _WHO_FILLS = re.compile(r"^\((?:to be )?(?:completed|filled(?: in)?) by [^)]*\)\s*", re.I)
 _CHOICE = re.compile(r"^click (?:here )?to (?:select|check|choose),?\s*[\"“']([^\"”']+)[\"”'](?:\s+(?:for|as|under)\s+(.+))?$", re.I)
@@ -893,6 +898,8 @@ def _field_payload(item: _Field, review: StructureRecordReview | None = None, fo
     c = item.candidate
     m = item.match
     flags = list(dict.fromkeys(item.flags))
+    if c.box_choice == UNRECOGNIZED:
+        flags.append(UNCLEAR_MARK)
     document_value = c.raw_value
     payload = {
         "kind": "field",
@@ -924,7 +931,19 @@ def _field_payload(item: _Field, review: StructureRecordReview | None = None, fo
         # Employer state ID no." are one item), its caption the field name.
         code = _BOX_CODE_PREFIX.match(normalize_space(c.label_text)) if c.box_code else None
         name = c.label_text[code.end():].strip() if code else c.label_text
+        # The field's name without the printed instruction after it
+        # ("(Include ZIP Code)", "(Type or print)"); the label keeps it.
+        if not c.box_choice:  # an option's "(RFP)" is part of its printed label
+            name = _TRAILING_INSTRUCTION.sub("", name) or name
         payload["form_item"] = {"number": c.box_code or "", "name": name, "number_source": "printed_box" if c.box_code else "none"}
+        if c.box_caption:
+            # A sub-field: its item's printed caption, and its own letter.
+            payload["form_item"]["parent"] = c.box_caption
+        if c.box_sub:
+            payload["form_item"]["sub"] = c.box_sub
+        if c.box_choice:
+            # A printed option: its tick box's state, from the mark in it.
+            payload["choice"] = STATE_LABELS.get(c.box_choice, "Unclear")
     elif c.structural_relation == "form_widget" or _INSTRUCTION.match(_FORM_NUMBER.sub("", normalize_space(c.label_text))):
         number, name, is_choice = form_label(c.label_text)
         payload["form_item"] = {"number": number, "name": name, "number_source": "form_field" if number else "none"}
@@ -959,6 +978,43 @@ def _field_payload(item: _Field, review: StructureRecordReview | None = None, fo
     if not payload["parts"] and c.structural_relation == "form_widget":
         payload["parts"] = block_parts(payload["effective_value"])
     return payload
+
+
+def _reattach_reviews(
+    fields: list[_Field], reviews: list[StructureRecordReview], by_key: dict[str, StructureRecordReview]
+) -> list[StructureRecordReview]:
+    """A field review saved under a key this reading no longer gives (the
+    field's printed label is read differently now) stays with its field:
+    the one field on its page holding exactly the value it reviewed, with
+    no review of its own. Never matched by label, which several fields can
+    share. Returns the reviews that fit no single field (listed, not lost)."""
+
+    current = {entry.record_key for entry in fields}
+    unattached = []
+    for review in reviews:
+        if review.record_kind != "field" or review.record_key in current:
+            continue
+        original = normalize_space(review.original_value) if isinstance(review.original_value, str) else ""
+        page = _key_page(review.record_key)
+        hits = [
+            entry for entry in fields
+            if original and (entry.candidate.page or 0) == page and entry.record_key not in by_key
+            and normalize_space(entry.candidate.raw_value) == original
+        ]
+        if len(hits) == 1:
+            by_key[hits[0].record_key] = review
+        else:
+            unattached.append(review)
+    return unattached
+
+
+def _key_page(record_key: str) -> int | None:
+    """The page in a field key ("field:3:…")."""
+
+    try:
+        return int(record_key.split(":")[1])
+    except (IndexError, ValueError):
+        return None
 
 
 def _review_payload(review: StructureRecordReview) -> dict[str, Any]:
@@ -1357,8 +1413,10 @@ def _apply_hierarchy(section_id: str, items: list[dict[str, Any]]) -> None:
                 previous = None
                 continue
             item_id = f"item:{section_id}:{_slug(form['number'])}:form"
-            # Several boxes under one printed caption: the caption names the item.
-            caption = form.get("caption") if run_sizes[position] > 1 else None
+            # Several boxes under one printed caption: the caption names the
+            # item; a sub-field names its item's caption itself.
+            caption = form.get("parent") or (form.get("caption") if run_sizes[position] > 1 else None)
+            item["sub_item"] = form.get("sub")
             item["item"] = {"id": item_id, "number": form["number"], "name": caption or "", "has_subfields": bool(caption)}
             item["item_start"] = item_id != previous
             item["parent_id"] = item_id
@@ -1567,6 +1625,7 @@ def build_original_layout(
         base = f"field:{c.page or 0}:{_slug(c.section_label)}:{_slug(c.label_text)}"
         entry.record_key = f"{base}:{seen.get(base, 0)}"
         seen[base] = seen.get(base, 0) + 1
+    unattached_reviews = _reattach_reviews(fields, reviews or [], by_key)
 
     # Leading fields printed before the first heading: under the document's
     # title when it has one, never a made-up "Document start".
@@ -1700,6 +1759,9 @@ def build_original_layout(
         "document_context": context,
         "quality_labels": QUALITY_LABELS,
         "unplaced": unplaced_items,
+        # Reviews whose field this reading can't name with certainty: kept
+        # and shown, never dropped or guessed onto a field.
+        "unattached_reviews": [{**_review_payload(r), "record_key": r.record_key} for r in unattached_reviews],
         "stats": {
             "sections": len(out_sections),
             "fields": len(field_items),

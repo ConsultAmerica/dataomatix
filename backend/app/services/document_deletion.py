@@ -78,6 +78,64 @@ def _dependent_tables():
     return direct, nested
 
 
+def _delete_rows(database: Session, ids: list[str]) -> int:
+    """The documents' rows and everything that belongs to them (not committed)."""
+
+    direct, nested = _dependent_tables()
+    rows = 0
+    # Portfolio members survive as standalone documents.
+    database.execute(update(Document).where(Document.parent_document_id.in_(ids)).values(parent_document_id=None))
+    for table, column, parent_column in nested:
+        owner = next(c for t, c in direct if t is parent_column.table)
+        parents = select(parent_column).where(owner.in_(ids))
+        rows += database.execute(delete(table).where(column.in_(parents))).rowcount or 0
+    for table, column in direct:
+        rows += database.execute(delete(table).where(column.in_(ids))).rowcount or 0
+    rows += database.execute(delete(Document).where(Document.id.in_(ids))).rowcount or 0
+    return rows
+
+
+def _delete_files(stored_filenames: list[str]) -> list[str]:
+    """Each stored file, the files derived from it and its remote object;
+    returns what could not be removed."""
+
+    settings = get_settings()
+    errors: list[str] = []
+    for stored_filename in stored_filenames:
+        stem = stored_filename.rsplit(".", 1)[0]
+        for path in settings.upload_path.glob(f"{stem}.*"):
+            try:
+                path.unlink()
+            except OSError as exc:
+                errors.append(f"{path.name}: {exc}")
+        try:
+            delete_object(settings, stored_filename)
+        except Exception as exc:  # noqa: BLE001 - reported, the record is already gone
+            errors.append(f"{stored_filename}: {exc}")
+    return errors
+
+
+def discard_refused_upload(database: Session, document_id: str) -> None:
+    """An upload refused after its record was saved (its content couldn't
+    be read): the record, its rows and its stored file go, so no
+    half-created document is listed or matched as a duplicate. Not audited
+    as a deletion — it never became a document; the refusal is the record."""
+
+    database.rollback()
+    document = database.get(Document, document_id)
+    if document is None:
+        return
+    stored = document.stored_filename
+    try:
+        _delete_rows(database, [document_id])
+        database.commit()
+    except Exception:
+        database.rollback()
+        raise
+    for error in _delete_files([stored]):
+        logger.warning("refused_upload_file_left id=%s %s", document_id, error)
+
+
 def delete_documents(database: Session, actor: ActorContext, document_ids: list[str]) -> DeletionResult:
     result = DeletionResult()
     targets: list[Document] = []
@@ -94,17 +152,8 @@ def delete_documents(database: Session, actor: ActorContext, document_ids: list[
 
     ids = [document.id for document in targets]
     files = [document.stored_filename for document in targets]
-    direct, nested = _dependent_tables()
     try:
-        # Portfolio members survive as standalone documents.
-        database.execute(update(Document).where(Document.parent_document_id.in_(ids)).values(parent_document_id=None))
-        for table, column, parent_column in nested:
-            owner = next(c for t, c in direct if t is parent_column.table)
-            parents = select(parent_column).where(owner.in_(ids))
-            result.rows_deleted += database.execute(delete(table).where(column.in_(parents))).rowcount or 0
-        for table, column in direct:
-            result.rows_deleted += database.execute(delete(table).where(column.in_(ids))).rowcount or 0
-        result.rows_deleted += database.execute(delete(Document).where(Document.id.in_(ids))).rowcount or 0
+        result.rows_deleted += _delete_rows(database, ids)
         # Audit logs have no FK to documents and are kept; record who
         # deleted each one (no filename — names can carry personal data).
         for document_id in ids:
@@ -127,18 +176,7 @@ def delete_documents(database: Session, actor: ActorContext, document_ids: list[
         raise
     result.deleted = ids
 
-    settings = get_settings()
-    for stored_filename in files:
-        stem = stored_filename.rsplit(".", 1)[0]
-        for path in settings.upload_path.glob(f"{stem}.*"):
-            try:
-                path.unlink()
-            except OSError as exc:
-                result.storage_errors.append(f"{path.name}: {exc}")
-        try:
-            delete_object(settings, stored_filename)
-        except Exception as exc:  # noqa: BLE001 - reported, the record is already gone
-            result.storage_errors.append(f"{stored_filename}: {exc}")
+    result.storage_errors += _delete_files(files)
     for document in targets:
         logger.info("document_deleted id=%s actor=%s", document.id, actor.id)
     return result

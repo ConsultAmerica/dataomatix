@@ -124,6 +124,13 @@ class FieldCandidate(BaseModel):
     # and the box itself (its fields keep the form's row order).
     box_code: str | None = None
     box_rect: BBox | None = None
+    # A sub-field of a printed item: the item's own caption ("ISSUED BY",
+    # "FOR INFORMATION CALL") and the sub-item's printed letter ("A").
+    box_caption: str | None = None
+    box_sub: str | None = None
+    # A printed option's tick box: selected / not_selected / unrecognized
+    # (a mark that sits in none of the box's tick boxes).
+    box_choice: str | None = None
 
 
 class TableCell(BaseModel):

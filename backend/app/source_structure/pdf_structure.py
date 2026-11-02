@@ -847,6 +847,19 @@ def _key_value_grid_fields(ids: "_Ids", page_number: int, table: TableCandidate,
     columns = max((len(r) for r in rows), default=0)
     if columns < 2 or columns % 2 or len(rows) < 1:
         return None
+    if table.header_cells and table.rows:
+        # A printed header over figures ("Subject | FAR case" over
+        # "Trade Agreements Thresholds | 2025–007") is a table: its would-be
+        # values are wording, the rows' are figures.
+        def figure(cell: TableCell | None) -> bool:
+            return cell is not None and bool(re.search(r"\d", cell.text or ""))
+
+        header = {c.column_index: c for c in table.header_cells}
+        value_columns = range(1, columns, 2)
+        if not any(figure(header.get(c)) for c in value_columns) and all(
+            any(figure(next((x for x in row if x.column_index == c), None)) for c in value_columns) for row in table.rows
+        ):
+            return None
     pairs: list[tuple[TableCell, TableCell]] = []
     for row in rows:
         by_column = {c.column_index: c for c in row}
@@ -917,6 +930,35 @@ def _caption_row_fields(
     return fields
 
 
+def _same_columns(a: list, b: list, slack: float = 15.0) -> bool:
+    """Two column layouts with the same columns at the same places."""
+
+    return len(a) == len(b) and all(abs(x.x0 - y.x0) <= slack for x, y in zip(a, b))
+
+
+_SENTENCE_END = re.compile(r"[.;:!?)\]]$")
+
+
+def _narrative_columns(rows: list[list[str]]) -> bool:
+    """Column-aligned lines that are running text set in columns: most
+    cells are several words, few are figures, and a cell's sentence runs on
+    into the cell below it ("… Office of Management" / "and Budget; …")."""
+
+    cells = [text for row in rows for text in row if text]
+    if len(rows) < 3 or len(cells) < 6:
+        return False
+    wordy = sum(1 for text in cells if len(text.split()) >= 3)
+    figures = sum(1 for text in cells if is_numeric_value(text))
+    pairs = runs_on = 0
+    for upper, lower in zip(rows, rows[1:]):
+        for a, b in zip(upper, lower):
+            if a and b:
+                pairs += 1
+                if not _SENTENCE_END.search(a) and (b[0].islower() or b[0] == "(" or a.endswith(("-", "–", ","))):
+                    runs_on += 1
+    return wordy >= 0.6 * len(cells) and figures <= 0.2 * len(cells) and pairs >= 4 and runs_on >= 0.3 * pairs
+
+
 def _is_header_row(cells: list[list[Segment]], data_rows: list[list[list[Segment]]]) -> bool:
     texts = [" ".join(s.text for s in cell) for cell in cells]
     filled = [t for t in texts if t]
@@ -934,6 +976,70 @@ def _is_header_row(cells: list[list[Segment]], data_rows: list[list[list[Segment
 
 
 # --- tables: ruling lines (native PDF tables) --------------------------------
+
+
+_LEADER = re.compile(r"\s*(?:\.\s*){3,}\s*")
+
+
+def _unstack_rows(
+    texts: list[list[str]], boxes: list[list[BBox | None]], lines: list[Line]
+) -> tuple[list[list[str]], list[list[BBox | None]]]:
+    """A ruled table whose rows aren't ruled comes back as one row holding
+    every line of each column ("$174,000 105,767 174,000 …"). Each such row
+    is split at the baselines of its figures: a label line beside them is
+    its row's label, a wrapped label line above joins it, a label alone
+    ending in ":" ("FTAs:") is a heading row of its own, and leader dots
+    are dropped."""
+
+    out_texts: list[list[str]] = []
+    out_boxes: list[list[BBox | None]] = []
+    for row, row_boxes in zip(texts, boxes):
+        stacked = [len(_cell_lines(lines, b)) >= 3 if b else False for b in row_boxes]
+        if sum(stacked) < 2 or not row_boxes or row_boxes[0] is None:
+            out_texts.append(row)
+            out_boxes.append(row_boxes)
+            continue
+        columns = [_cell_lines(lines, b) if b else [] for b in row_boxes]
+        anchors = sorted({round(y) for col in columns[1:] for y, _ in col})
+        merged: list[float] = []
+        for y in anchors:
+            if not merged or y - merged[-1] > 3:
+                merged.append(y)
+        rows_here: list[list[str]] = [["" for _ in row] for _ in merged]
+        pending: list[str] = []
+        label_rows: list[tuple[int, list[str]]] = []
+        for y, text in columns[0]:
+            at = next((i for i, a in enumerate(merged) if abs(a - y) <= 3), None)
+            text = _LEADER.sub(" ", text).strip()
+            if at is not None:
+                rows_here[at][0] = normalize_space(" ".join(pending + [text]))
+                pending = []
+            elif text.endswith(":"):
+                label_rows.append((y, [text] + [""] * (len(row) - 1)))
+            elif text:
+                pending.append(text[:-1] if text.endswith("-") else text + " ")
+        for c in range(1, len(row)):
+            for y, text in columns[c]:
+                at = next((i for i, a in enumerate(merged) if abs(a - y) <= 3), None)
+                if at is not None:
+                    rows_here[at][c] = _LEADER.sub(" ", text).strip()
+        ordered = sorted([(a, r) for a, r in zip(merged, rows_here)] + label_rows, key=lambda item: item[0])
+        for _, cells in ordered:
+            out_texts.append([normalize_space(c.replace(" -", "-")) for c in cells])
+            out_boxes.append([None] * len(row))
+    return out_texts, out_boxes
+
+
+def _cell_lines(lines: list[Line], box: BBox) -> list[tuple[float, str]]:
+    """(baseline y, text) of each line of words inside a cell, top down."""
+
+    x0, y0, x1, y1 = box
+    found: list[tuple[float, str]] = []
+    for line in lines:
+        words = [w for w in line.words if x0 - 1 <= (w.x0 + w.x1) / 2 <= x1 + 1 and y0 - 1 <= w.cy <= y1 + 1]
+        if words:
+            found.append((max(w.y1 for w in words), " ".join(w.text for w in sorted(words, key=lambda w: w.x0))))
+    return found
 
 
 def _ruled_tables(page, page_number: int):
@@ -1726,6 +1832,19 @@ def _values_below(label: Segment, line: Line, lines: list[Line]) -> list[Segment
     return collected
 
 
+def _within(inner: BBox, outer: BBox, slack: float = 2.0) -> bool:
+    return inner[0] >= outer[0] - slack and inner[1] >= outer[1] - slack and inner[2] <= outer[2] + slack and inner[3] <= outer[3] + slack
+
+
+def _has_widgets(page) -> bool:
+    """A fillable form: its boxes are read from its widgets, not its rules."""
+
+    try:
+        return any(True for _ in page.widgets() or [])
+    except Exception:  # noqa: BLE001 - unreadable widgets: read the page as drawn
+        return False
+
+
 def _form_widget_candidates(ids: _Ids, page, page_number: int) -> list[FieldCandidate]:
     fields = []
     try:
@@ -2140,14 +2259,40 @@ def _extract_structure(
     lines = build_lines(words)
     page_text = "\n".join(" ".join(s.text for s in line.segments) for line in lines)
 
+    # 0. A drawn form (ruled boxes, no fill-in widgets) read box by box,
+    # caption over value — never as a table or as aligned columns.
+    vector_fields: list[FieldCandidate] = []
+    form_frame = None
+    if fitz_page is not None and extraction_method == "native" and not _has_widgets(fitz_page):
+        from app.source_structure.vector_forms import read_vector_form
+
+        form = read_vector_form(ids, page_number, fitz_page, lines, extraction_method, page_text)
+        if form is not None:
+            vector_fields = form.fields
+            form_frame = form.frame
+            result.tables.extend(form.tables)
+            result.regions.extend(form.regions)
+
     # 1. Ruled tables (native only — OCR has no vector ruling lines). The
     # table finder is the expensive step, so it only runs where the words
     # already show multi-column structure.
     multi_column_lines = sum(1 for line in lines if len(line.segments) >= 3)
     if fitz_page is not None and extraction_method == "native" and multi_column_lines >= 3:
         for bbox, data, cell_boxes, header_names in _ruled_tables(fitz_page, page_number):
+            if form_frame is not None and _within(tuple(bbox), form_frame):
+                continue  # the drawn form's own boxes, already read
             texts = [[normalize_space(str(c or "")) for c in row] for row in data]
             boxes = [[tuple(b) if b else None for b in row] for row in cell_boxes]
+            # A title spanning the table ("Schedule of Prices") over a row of
+            # labels: its caption, and the labels its header.
+            caption = None
+            if len(texts) > 2 and texts[0] and texts[0][0] and not any(texts[0][1:]) and len(texts[1]) > 1 and all(
+                h and not is_numeric_value(h) for h in texts[1]
+            ):
+                caption, texts, boxes = texts[0][0], texts[1:], boxes[1:]
+            # The header's own wrapped lines stay one header row.
+            body_texts, body_boxes = _unstack_rows(texts[1:], boxes[1:], lines)
+            texts, boxes = texts[:1] + body_texts, boxes[:1] + body_boxes
             header, body = texts[0], texts[1:]
             header_ok = all(h and not is_numeric_value(h) for h in header)
             table, regions = _table_from_grid(
@@ -2158,6 +2303,7 @@ def _extract_structure(
                 boxes[1:] if header_ok else boxes,
                 page_text, tuple(bbox),
             )
+            table.caption = table.caption or caption
             result.tables.append(table)
             result.regions.extend(regions)
             if table.acceptance == "accepted":
@@ -2217,7 +2363,10 @@ def _extract_structure(
     fields[:0] = ruled_fields
     fields.extend(widget_fields)
 
-    # 3. Column-aligned tables from the remaining runs.
+    # 3. Column-aligned tables from the remaining runs, judged together: a
+    # page set in text columns (the Federal Register) has the same columns
+    # everywhere, so a short strip lined up with prose columns is prose too.
+    aligned = []
     for bands, grid, members in _alignment_tables(lines):
         box_fields = _caption_row_fields(ids, page_number, grid, extraction_method)
         if box_fields:
@@ -2235,6 +2384,14 @@ def _extract_structure(
             page_text,
             _union([s.bbox for line in members for s in line.free_segments]),
         )
+        prose = header_cells is None and _narrative_columns([[_cell_text(c) for c in row] for row in body])
+        aligned.append((bands, table, regions, members, header_cells is None, prose))
+    prose_columns = [bands for bands, *_, prose in aligned if prose]
+    for bands, table, regions, members, headerless, prose in aligned:
+        if prose or (headerless and any(_same_columns(bands, other) for other in prose_columns)):
+            table.acceptance = "rejected"
+            table.reasons.append("narrative_columns")
+            regions = []
         result.tables.append(table)
         result.regions.extend(regions)
         if table.acceptance == "accepted":
@@ -2244,7 +2401,7 @@ def _extract_structure(
 
     # 4. Separator-less pairs, only from what no table claimed.
     fields.extend(_loose_label_value_candidates(ids, page_number, lines, extraction_method))
-    fields[:0] = form_box_fields + grid_fields
+    fields[:0] = form_box_fields + vector_fields + grid_fields
     _rescue_form_captions(fields)
 
     for f in fields:

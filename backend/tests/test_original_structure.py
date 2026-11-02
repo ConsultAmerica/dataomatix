@@ -1185,7 +1185,11 @@ def test_numbered_captions_over_their_values_are_fields_not_a_table() -> None:
     page = fitz.open(SF1442)[0]
     result = extract_page_structure(page_number=1, words=native_words(page), extraction_method="native", fitz_page=page)
     assert not [t for t in result.tables if t.detection_method == "pdf_column_alignment"]
-    fields = {f.label_text: f.raw_value for f in result.fields if f.structural_relation == "label_above_value"}
+    # Read box by box (a drawn form) or caption over value: either way fields.
+    fields = {
+        f.label_text: f.raw_value for f in result.fields
+        if f.structural_relation in ("label_above_value", "ruled_form_box") and f.label_text[:2] in ("4.", "5.", "6.")
+    }
     assert fields == {
         "4. CONTRACT NO.": "N4019223D2803",
         "5. REQUISITION/PURCHASE REQUEST NO.": "ACQR5858342",
