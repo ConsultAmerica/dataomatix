@@ -871,6 +871,52 @@ def _key_value_grid_fields(ids: "_Ids", page_number: int, table: TableCandidate,
     return fields
 
 
+def _caption_row_fields(
+    ids: "_Ids", page_number: int, grid: list[list[list[Segment]]], extraction_method: str
+) -> list[FieldCandidate]:
+    """A form's boxes that line up as columns — "4. CONTRACT NO. | 5. …
+    | 6. PROJECT NO." over "N4019223D2803 | ACQR5858342 | (blank)" — are
+    fields, each numbered caption over its value, not a table whose first
+    row is captions. Rows that aren't a caption row over a value row stay
+    unclaimed for the readers after this one."""
+
+    def numbered(cell: list[Segment]) -> bool:
+        return bool(_NUMBERED_ITEM.match(_cell_text(cell)))
+
+    def caption_row(row: list[list[Segment]]) -> bool:
+        filled = [c for c in row if c]
+        return len(filled) >= 2 and all(numbered(c) for c in filled)
+
+    if not grid or not caption_row(grid[0]):
+        return []
+    fields: list[FieldCandidate] = []
+    r = 0
+    while r + 1 < len(grid):
+        row, below = grid[r], grid[r + 1]
+        if not caption_row(row) or any(numbered(c) for c in below if c):
+            r += 1
+            continue
+        for caption, value in zip(row, below):
+            if not caption:
+                continue
+            label, text = _cell_text(caption), _cell_text(value)
+            field = _field(
+                ids, page_number, label, text, "label_above_value",
+                _union([s.bbox for s in caption]), _union([s.bbox for s in value]) if value else None,
+                f"{label} {text}".strip(), extraction_method,
+            )
+            # Its place makes it a caption; only the value's own checks apply.
+            field.reasons = [x for x in field.reasons if not x.startswith("label_")]
+            if not text and field.reasons == ["empty_value"]:
+                field.reasons = []  # a printed box left empty: a blank value
+            field.acceptance = "rejected" if field.reasons else "accepted"
+            fields.append(field)
+            for seg in caption + value:
+                seg.used = True
+        r += 2
+    return fields
+
+
 def _is_header_row(cells: list[list[Segment]], data_rows: list[list[list[Segment]]]) -> bool:
     texts = [" ".join(s.text for s in cell) for cell in cells]
     filled = [t for t in texts if t]
@@ -2173,6 +2219,10 @@ def _extract_structure(
 
     # 3. Column-aligned tables from the remaining runs.
     for bands, grid, members in _alignment_tables(lines):
+        box_fields = _caption_row_fields(ids, page_number, grid, extraction_method)
+        if box_fields:
+            fields.extend(box_fields)
+            continue
         header_is_first = _is_header_row(grid[0], grid[1:])
         header_cells = grid[0] if header_is_first else None
         body = grid[1:] if header_is_first else grid
