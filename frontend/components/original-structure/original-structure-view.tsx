@@ -76,6 +76,13 @@ export const FIELD_COLUMNS = [
   "Source Page",
 ] as const;
 
+/** Shared row gutters so section headers, field grids and tables keep one
+ * vertical checkbox / Item # axis across every card. */
+const CHECK_COL = "w-6 px-2";
+const ITEM_COL = "w-12 px-2";
+/** Flagged rows: inset bar (not border-l) so the row doesn't shift sideways. */
+const FLAG_ROW = "shadow-[inset_2px_0_0_var(--danger)]";
+
 export type Selection =
   | { kind: "field"; field: LayoutField; section: string | null }
   | { kind: "row"; table: LayoutTable; row: LayoutTableRow; section: string | null };
@@ -140,7 +147,7 @@ export function fieldLine(field: Pick<LayoutField, "item" | "field_name" | "labe
 }
 
 /** Where a form box's item number comes from, for its tooltip. */
-export function numberNote(field: Pick<LayoutField, "form_item" | "label" | "label_info">, name: string): string | undefined {
+export function numberNote(field: Pick<LayoutField, "form_item" | "label" | "label_info" | "help_text">, name: string): string | undefined {
   const notes = [field.label !== name ? `Printed: ${field.label}` : ""];
   // The label written out for this document type, and the field it means.
   const info = field.label_info;
@@ -150,6 +157,8 @@ export function numberNote(field: Pick<LayoutField, "form_item" | "label" | "lab
   if (form?.described_as) notes.push(`Item ${form.number} as printed on the form; the box's own description says ${form.described_as}`);
   else if (form?.number_source === "form_field") notes.push(`Item ${form.number} from the box's own description (no printed caption found in its cell)`);
   else if (form?.number_source === "none") notes.push("No printed item number");
+  // The form field's own description, when the page's wording names it.
+  if (field.help_text) notes.push(`Form field description: ${field.help_text}`);
   const text = notes.filter(Boolean).join(" · ");
   return text || undefined;
 }
@@ -389,8 +398,10 @@ export default function OriginalStructureView({
           const tables = section.items.filter((i): i is LayoutTable => i.kind === "table");
           return (
             <section key={section.id} className={`rounded-xl border border-border bg-surface ${(section.level ?? 1) > 1 ? "ml-4" : ""}`} aria-label={sectionTitle(section)} data-testid="layout-section">
-              <div className="flex w-full items-center gap-2 px-4 py-2.5">
-                <TriCheckbox ids={itemRecordIds(section.items)} label={`Select all records in ${sectionTitle(section)}`} />
+              <div className="flex w-full items-center gap-2 px-2 py-2.5">
+                <span className={`inline-flex ${CHECK_COL} justify-center`}>
+                  <TriCheckbox ids={itemRecordIds(section.items)} label={`Select all records in ${sectionTitle(section)}`} />
+                </span>
               <button type="button" onClick={() => toggle(section.id)} aria-expanded={open}
                 className="flex min-w-0 flex-1 items-center gap-2 text-left">
                 {open ? <ChevronDown className="h-4 w-4 text-text-muted" aria-hidden="true" /> : <ChevronRight className="h-4 w-4 text-text-muted" aria-hidden="true" />}
@@ -528,11 +539,24 @@ function FieldGrid({ fields, section, selectedId, onSelect, density = "comfortab
   const ofItem = (id: string) => fields.filter((f) => f.item?.id === id).map((f) => layoutId(f.record_key));
   return (
     <div ref={windowRef} className={`overflow-x-auto ${windowRows.windowed ? "max-h-[70vh] overflow-y-auto" : ""}`}>
-      <table className="w-full min-w-[860px] text-xs" data-testid="layout-field-grid">
+      <table className="w-full min-w-[860px] table-fixed text-xs" data-testid="layout-field-grid">
+        <colgroup>
+          {shared && <col className="w-6" />}
+          <col className="w-12" />
+          <col className="w-[18%]" />
+          <col />
+          <col className="w-[16%]" />
+          <col className="w-28" />
+          <col className="w-24" />
+          <col className="w-28" />
+          <col className="w-20" />
+        </colgroup>
         <thead>
           <tr className="border-b border-border text-left text-[11px] uppercase tracking-wide text-text-secondary">
-            {shared && <td className="w-6 px-2 py-1.5"><TriCheckbox ids={fields.map((f) => layoutId(f.record_key))} label="Select these fields" /></td>}
-            {FIELD_COLUMNS.map((column) => <th key={column} scope="col" className="px-2 py-1.5 font-semibold">{column}</th>)}
+            {shared && <td className={`${CHECK_COL} py-1.5`}><TriCheckbox ids={fields.map((f) => layoutId(f.record_key))} label="Select these fields" /></td>}
+            {FIELD_COLUMNS.map((column) => (
+              <th key={column} scope="col" className={`${column === "Item #" ? ITEM_COL : "px-2"} py-1.5 font-semibold`}>{column}</th>
+            ))}
           </tr>
         </thead>
         <tbody>
@@ -542,19 +566,21 @@ function FieldGrid({ fields, section, selectedId, onSelect, density = "comfortab
             const parts = field.parts ?? [];
             const value = field.effective_value || field.extracted_value;
             const shownText = shownValue(field);
-            const nameCell = `px-2 py-1.5 font-medium text-foreground ${line.indent ? "pl-6" : ""}`;
+            // Indent is conveyed by Item # / caption rows only — extra pl on
+            // the name cell made stacked cards drift out of column alignment.
+            const nameCell = "px-2 py-1.5 font-medium text-foreground";
             return (
             <Fragment key={field.id}>
             {line.caption && (
               <tr data-testid="item-parent" className="border-b border-border/60 bg-surface-soft/60 align-top">
-                {shared && <td className={`w-6 px-2 ${pad}`}><TriCheckbox ids={ofItem(line.caption.id)} label={`Select all of ${line.caption.number} ${line.caption.name}`} /></td>}
-                <td className="w-12 px-2 py-1.5 font-semibold text-foreground" data-testid="item-number">{line.caption.number}</td>
+                {shared && <td className={`${CHECK_COL} ${pad}`}><TriCheckbox ids={ofItem(line.caption.id)} label={`Select all of ${line.caption.number} ${line.caption.name}`} /></td>}
+                <td className={`${ITEM_COL} py-1.5 font-semibold text-foreground`} data-testid="item-number">{line.caption.number}</td>
                 <td className="px-2 py-1.5 font-semibold text-foreground" title={sectionPath(section, field.group)} data-testid="item-category">{line.caption.name}</td>
                 <td colSpan={FIELD_COLUMNS.length - 2} />
               </tr>
             )}
             <tr data-testid="layout-field-row" data-window-row data-record-key={field.record_key}
-              className={`cursor-pointer border-b border-border/60 align-top hover:bg-surface-soft ${selectedId === field.record_key ? "bg-primary/[0.06]" : ""} ${field.flags.length ? "border-l-2 border-l-danger" : ""}`}
+              className={`cursor-pointer border-b border-border/60 align-top hover:bg-surface-soft ${selectedId === field.record_key ? "bg-primary/[0.06]" : ""} ${field.flags.length ? FLAG_ROW : ""}`}
               onClick={() => onSelect(field)}
               onKeyDown={(event) => {
                 if (event.key === "Enter" || event.key === " ") {
@@ -563,8 +589,8 @@ function FieldGrid({ fields, section, selectedId, onSelect, density = "comfortab
                 }
               }}
               tabIndex={0} aria-selected={selectedId === field.record_key}>
-              {shared && <td className={`w-6 px-2 ${pad}`}><TriCheckbox ids={[layoutId(field.record_key)]} label={`Select ${field.label}`} /></td>}
-              <td className="w-12 px-2 py-1.5 font-semibold text-foreground" data-testid="item-number">{line.number}</td>
+              {shared && <td className={`${CHECK_COL} ${pad}`}><TriCheckbox ids={[layoutId(field.record_key)]} label={`Select ${field.label}`} /></td>}
+              <td className={`${ITEM_COL} py-1.5 font-semibold text-foreground`} data-testid="item-number">{line.number}</td>
               <td className={nameCell} title={numberNote(field, line.name)} data-testid="field-name">{line.name}</td>
               <td className="px-2 py-1.5">
                 {parts.length > 0 ? (
@@ -605,9 +631,9 @@ function FieldGrid({ fields, section, selectedId, onSelect, density = "comfortab
               // Part of the field above: it opens the same record and source.
               <tr key={part.label} data-testid="composite-part" onClick={() => onSelect(field)}
                 className={`cursor-pointer border-b border-border/60 align-top hover:bg-surface-soft ${selectedId === field.record_key ? "bg-primary/[0.06]" : ""}`}>
-                {shared && <td className={`w-6 px-2 ${pad}`} />}
-                <td />
-                <td className="px-2 py-1.5 pl-6 text-text-secondary">{part.label}</td>
+                {shared && <td className={`${CHECK_COL} ${pad}`} />}
+                <td className={ITEM_COL} />
+                <td className="px-2 py-1.5 text-text-secondary">{part.label}</td>
                 <td className="px-2 py-1.5 text-foreground">{part.value}</td>
                 <td colSpan={FIELD_COLUMNS.length - 4} className="px-2 py-1.5 text-[11px] text-text-muted">Split from the printed value</td>
                 <td className="px-2 py-1.5 text-text-secondary">{field.page ?? "—"}</td>
@@ -670,9 +696,11 @@ export function TableView({ table, selectedId, onSelect, reviewEnabled = false, 
   const flagged = table.rows.filter((row) => row.flags?.length).length;
   return (
     <div className="rounded-lg border border-border" data-testid="layout-table">
-      <p className="flex flex-wrap items-center gap-2 border-b border-border bg-surface-soft px-3 py-1.5 text-xs text-text-secondary">
-        <Table2 className="h-3.5 w-3.5" aria-hidden="true" />
-        <TriCheckbox ids={table.rows.map((row) => layoutId(row.record_key))} label={`Select all rows of ${table.title ?? "this table"}`} />
+      <p className="flex flex-wrap items-center gap-2 border-b border-border bg-surface-soft px-2 py-1.5 text-xs text-text-secondary">
+        <span className={`inline-flex ${CHECK_COL} justify-center`}>
+          <TriCheckbox ids={table.rows.map((row) => layoutId(row.record_key))} label={`Select all rows of ${table.title ?? "this table"}`} />
+        </span>
+        <Table2 className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
         {table.item?.number && <span className="font-semibold text-foreground" data-testid="table-item-number">{table.item.number}</span>}
         <span className="font-medium text-foreground">{section === undefined ? table.title ?? "Table" : tableTitle(table, section)}</span>
         {table.form_table?.folded && <span title="Printed in two halves side by side; read left half, then right half">· read left, then right</span>}
@@ -691,7 +719,7 @@ export function TableView({ table, selectedId, onSelect, reviewEnabled = false, 
         // What every row belongs to, once above it: the contract (when the
         // document printed no block of its own here) and any column with one
         // value for every row.
-        <p className="flex flex-wrap gap-x-4 gap-y-0.5 border-b border-border px-3 py-1.5 text-[11px] text-text-secondary" data-testid="table-context">
+        <p className="flex flex-wrap gap-x-4 gap-y-0.5 border-b border-border px-2 py-1.5 text-[11px] text-text-secondary" data-testid="table-context">
           {table.context_source === "inherited" && (table.context ?? []).map((entry) => (
             <span key={entry.record_key} title={entry.printed_label && entry.printed_label !== entry.label ? entry.label : undefined}>
               <span className="text-text-muted">{entry.printed_label ?? entry.label}:</span> <span className="font-medium text-foreground">{entry.value}</span>
@@ -705,15 +733,20 @@ export function TableView({ table, selectedId, onSelect, reviewEnabled = false, 
         </p>
       )}
       {loose && (
-        <p className="border-b border-border bg-warning/5 px-3 py-1 text-[11px] text-warning">
+        <p className="border-b border-border bg-warning/5 px-2 py-1 text-[11px] text-warning">
           Found by text alignment (no ruling or printed header): a cell may be split across columns or rows. Check it against the source.
         </p>
       )}
       <div ref={windowRef} className="max-h-[520px] overflow-auto">
-        <table className="w-full text-xs">
+        <table className="w-full table-fixed text-xs">
+          <colgroup>
+            {selection && <col className="w-6" />}
+            {columns.map((index) => <col key={index} />)}
+            {reviewEnabled && <col className="w-28" />}
+          </colgroup>
           <thead className="sticky top-0 bg-surface">
             <tr className="border-b border-border text-left text-text-secondary">
-              {selection && <td className="w-6 px-2 py-1.5" />}
+              {selection && <td className={`${CHECK_COL} py-1.5`} />}
               {columns.map((index) => <th key={index} scope="col" className="whitespace-nowrap px-2 py-1.5 font-semibold">{table.headers[index]}</th>)}
               {reviewEnabled && <th scope="col" className="whitespace-nowrap px-2 py-1.5 font-semibold">Review</th>}
             </tr>
@@ -735,7 +768,7 @@ export function TableView({ table, selectedId, onSelect, reviewEnabled = false, 
                     }
                   }}
                   className={`cursor-pointer border-b border-border/60 hover:bg-surface-soft ${selectedId === row.record_key ? "bg-primary/[0.06]" : ""}`}>
-                  {selection && <td className={`w-6 px-2 ${pad}`}><TriCheckbox ids={[layoutId(row.record_key)]} label={`Select row ${rowIndex + 1} of ${table.title ?? "the table"}`} /></td>}
+                  {selection && <td className={`${CHECK_COL} ${pad}`}><TriCheckbox ids={[layoutId(row.record_key)]} label={`Select row ${rowIndex + 1} of ${table.title ?? "the table"}`} /></td>}
                   {columns.map((index) => {
                     const corrected = row.reviewed_cells && row.reviewed_cells[index] !== row.cells[index] && !row.added;
                     const issue = issues.get(index);

@@ -88,6 +88,6 @@ describe("NavDropdown", () => {
     render(<NavDropdown label="Review" href="/review" sections={topMenu("review").sections} current />);
     const pill = screen.getByRole("button", { name: "Review" });
     expect(pill).toHaveAttribute("data-current", "true");
-    expect(pill).toHaveClass("rounded-full", "bg-white"); // the filled pill
+    expect(pill).toHaveClass("rounded-full", "bg-primary"); // the filled pill, on the light top bar
   });
 });

@@ -239,8 +239,10 @@ def test_a_blank_fillable_form_lists_its_boxes_and_hides_its_wording_read_as_pai
     fields = [i for s in layout["sections"] for i in s["items"] if i["kind"] == "field"]
     shown = [f for f in fields if not f.get("form_duplicate")]
     names = {f["field_name"]: f for f in shown}
-    assert {"Contract Number", "Solicitation Number", "Requisition/Purchase Number"} <= set(names)
-    assert all(names[n]["blank"] for n in ("Contract Number", "Solicitation Number", "Requisition/Purchase Number"))
+    # Named as the page prints them ("2. CONTRACT NUMBER"), not by the boxes' descriptions.
+    printed = ("CONTRACT NUMBER", "SOLICITATION NUMBER", "REQUISITION/PURCHASE NUMBER")
+    assert set(printed) <= set(names)
+    assert all(names[n]["blank"] for n in printed)
     # No shown field takes another caption's wording as its value.
     assert not any("ADDRESS OFFER" in (f.get("effective_value") or "").upper() for f in shown)
 

@@ -28,7 +28,7 @@ export default function WorkspaceTopBar({ onOpenSearch, onOpenMobileNav }: Works
           <Menu className="h-4 w-4" strokeWidth={1.75} />
         </button>
         <Link href="/" className="header-brand-link" aria-label="Dataomatix home">
-          <DataomatixLogo variant="wordmark" tone="onDark" size={36} />
+          <DataomatixLogo variant="wordmark" tone="onLight" size={38} />
         </Link>
       </div>
 
@@ -49,7 +49,7 @@ export default function WorkspaceTopBar({ onOpenSearch, onOpenMobileNav }: Works
           <CommandTrigger onOpen={onOpenSearch} compact />
         </span>
         <ThemeToggle />
-        <div className="hidden shrink-0 items-center gap-2 border-l border-white/10 pl-2 sm:flex">
+        <div className="hidden shrink-0 items-center gap-2 border-l border-border pl-2 sm:flex">
           <UserChip />
         </div>
       </div>

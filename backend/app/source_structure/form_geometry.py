@@ -102,6 +102,8 @@ class Caption:
     # The printed wording after the number, its continuation lines joined.
     text: str
     bbox: BBox
+    # The first line and its continuation lines ("10. FOR" / "INFORMATION" / "CALL:").
+    area: BBox | None = None
 
 
 @dataclass(frozen=True)
@@ -121,6 +123,33 @@ class FormTable:
     bbox: BBox
     # Read left half, then right half: the halves are separate lists.
     folded: bool
+
+
+# "A. NAME", "B. TELEPHONE NO.": a lettered sub-item's caption.
+_LETTERED = re.compile(r"^([A-Z])\.\s+\S")
+
+
+def _label_like(text: str) -> bool:
+    """Printed as a label: a lettered sub-caption ("A. NAME") or mostly
+    capitals ("AREA CODE", "CALENDAR DAYS (%)") — not a sentence fragment
+    ("until", "calendar days (60 …") nor only an instruction ("(Type or print)")."""
+
+    text = text.strip()
+    if not text or (text.startswith("(") and text.endswith(")")):
+        return False
+    return bool(_LETTERED.match(text)) or is_label_caption(text)
+
+
+def _reading(words: list[PrintedLine]) -> str:
+    """Words in reading order: line by line, left to right."""
+
+    lines: list[list[PrintedLine]] = []
+    for w in sorted(words, key=lambda w: (w.center[1], w.bbox[0])):
+        if lines and abs(lines[-1][0].center[1] - w.center[1]) <= 2:
+            lines[-1].append(w)
+        else:
+            lines.append([w])
+    return normalize_space(" ".join(w.text for line in lines for w in sorted(line, key=lambda w: w.bbox[0])))
 
 
 def _inside(point: tuple[float, float], box: BBox, pad: float = 0.0) -> bool:
@@ -156,6 +185,9 @@ class FormPage:
     all_text: list[str]
     boxes: list[FormBox]
     captions: list[Caption] = field(default_factory=list)
+    # Every printed word outside the boxes, positioned (a line can run
+    # across two cells: "AREA CODE  NUMBER").
+    words: list[PrintedLine] = field(default_factory=list)
 
     # -- cells -----------------------------------------------------------
 
@@ -210,6 +242,176 @@ class FormPage:
             None,
         )
         return line.text if line else None
+
+    def option_label(self, box: FormBox) -> str | None:
+        """A choice's printed option: the line beside its box and the line
+        that wording wraps onto ("NEGOTIATED (RFP) REQUEST FOR" /
+        "PROPOSAL"), never the next option's line or a caption."""
+
+        first = next(
+            (l for l in self.lines if 0 <= l.bbox[0] - box.rect[2] <= 12
+             and _covered((box.rect[0], l.bbox[1], box.rect[2], l.bbox[3]), box.rect) > 0.5),
+            None,
+        )
+        if first is None:
+            return None
+        parts, bottom = [first.text], first.bbox[3]
+        height = first.bbox[3] - first.bbox[1]
+        others = [b for b in self.boxes if b is not box and b.is_choice]
+        for following in sorted((l for l in self.lines if l.bbox[1] > first.bbox[1] + 1), key=lambda l: l.bbox[1]):
+            if following.bbox[1] - bottom > 0.6 * height:
+                break
+            if abs(following.bbox[0] - first.bbox[0]) > 3:
+                continue
+            beside_other = any(o.rect[1] - 1 <= following.center[1] <= o.rect[3] + 1 and o.rect[0] < following.bbox[0] for o in others)
+            if beside_other or _CAPTION.match(following.text):
+                break
+            parts.append(following.text)
+            bottom = following.bbox[3]
+        return normalize_space(" ".join(parts))
+
+    def printed_labels(self) -> dict[tuple[str, BBox], tuple[str, str | None, str]]:
+        """Each fill-in box's printed label, from the page, never from the
+        box's own description: (label, sub-item letter, where it came from).
+
+        - "beside": the words printed just left of the box on its line
+          ("CODE  [N40192]");
+        - "cell": the words in the box's own ruled cell, its item's caption
+          and the options' wording left out ("A. NAME", "AREA CODE");
+        - "caption": the one box of an item with no label of its own takes
+          the item's caption ("20. AMOUNT").
+
+        A label without a letter takes one only from the single lettered
+        caption printed directly above its cell and across it ("B.
+        TELEPHONE" over AREA CODE / NUMBER / EXTENSION). A box with nothing
+        printed for it, sharing its item with others, gets no label."""
+
+        caption_areas = [c.area or c.bbox for c in self.captions]
+        option_lines = [self.option_label(b) for b in self.boxes if b.is_choice]
+        option_words = {
+            id(w) for b in self.boxes if b.is_choice
+            for w in self.words
+            if 0 <= w.bbox[0] - b.rect[2] <= 160 and abs(w.center[1] - (b.rect[1] + b.rect[3]) / 2) <= (b.rect[3] - b.rect[1])
+        } if option_lines else set()
+        fill_ins = [b for b in self.boxes if not b.is_choice]
+
+        def free(word: PrintedLine) -> bool:
+            return id(word) not in option_words and not any(_inside(word.center, a, 1.0) for a in caption_areas)
+
+        # A box's label on its own line: just right of it inside its own
+        # cell ("[ ] CALENDAR DAYS (%)"), else just left of it ("CODE  [ ]")
+        # — never words in another box's own cell ("30 CALENDAR DAYS (%)"
+        # over the box beside it). A cell that holds this box too (box 7's,
+        # around its CODE box) is not another box's.
+        cells = {id(b): self.box_cells(b)[0] for b in fill_ins}
+        beside: dict[int, list[PrintedLine]] = {}
+        claimed: set[int] = set()
+        for box in fill_ins:
+            middle = (box.rect[1] + box.rect[3]) / 2
+            reach = max(3.0, (box.rect[3] - box.rect[1]) / 2)
+            on_line = [w for w in self.words if free(w) and abs(w.center[1] - middle) <= reach and id(w) not in claimed]
+            foreign = [
+                cells[id(o)] for o in fill_ins
+                if o is not box and not _inside(((box.rect[0] + box.rect[2]) / 2, middle), cells[id(o)])
+            ]
+            right: list[PrintedLine] = []
+            for w in sorted((w for w in on_line if w.bbox[0] >= box.rect[2] - 1 and _inside(w.center, cells[id(box)])), key=lambda w: w.bbox[0]):
+                edge = right[-1].bbox[2] if right else box.rect[2]
+                if w.bbox[0] - edge > (6 if right else 8):
+                    break
+                right.append(w)
+            left: list[PrintedLine] = []
+            for w in sorted((w for w in on_line if w.bbox[2] <= box.rect[0] + 1), key=lambda w: -w.bbox[2]):
+                edge = left[-1].bbox[0] if left else box.rect[0]
+                if edge - w.bbox[2] > (6 if left else 25) or any(_inside(w.center, c) for c in foreign):
+                    break
+                left.append(w)
+            for run in (right, sorted(left, key=lambda w: w.bbox[0])):
+                if run and _label_like(_reading(run)):
+                    beside[id(box)] = run
+                    claimed |= {id(w) for w in run}
+                    break
+
+        out: dict[tuple[str, BBox], tuple[str, str | None, str]] = {}
+        unlabeled: dict[str, list[FormBox]] = {}
+        for box in fill_ins:
+            cell = self.box_cells(box)[0]
+            if id(box) in beside:
+                words, source = beside[id(box)], "beside"
+            else:
+                words = [
+                    w for w in self.words
+                    if free(w) and id(w) not in claimed and _inside(w.center, cell)
+                    and box.rect[0] - 20 <= w.center[0] <= box.rect[2] + 20
+                    # Near the box: an unruled page's "cell" is the whole page.
+                    and box.rect[1] - 30 <= w.center[1] <= box.rect[3] + 12
+                    and not any(_inside(w.center, other.rect) for other in self.boxes)
+                ]
+                source = "cell"
+            text = _reading(words)
+            if not _label_like(text):
+                # A blank inside a printed sentence: what is printed under it
+                # ("(Hour)"), else the words just before it ("… located in").
+                # A box alone in a cell printing its item's caption takes that
+                # caption; blanks sharing one ("9. … [ ] copies … until [ ]")
+                # are named by the sentence around each.
+                alone = sum(1 for b in fill_ins if _inside(((b.rect[0] + b.rect[2]) / 2, (b.rect[1] + b.rect[3]) / 2), cell)) == 1
+                text, source = (None, "") if self.captions_in(cell) and alone else self._in_sentence(box, cell, claimed)
+            if not text:
+                # Its item: as printed, else as its own description numbers it.
+                described = re.match(r"^(\d{1,3}[A-Z]?)\b", box.label or "")
+                number = self.printed_number(box, described.group(1) if described else "")[0]
+                unlabeled.setdefault(number, []).append(box)
+                continue
+            letter = _LETTERED.match(text)
+            out[(box.name, box.rect)] = (text, letter.group(1) if letter else self._letter_above(cell), source)
+        for number, boxes in unlabeled.items():
+            caption = next((c for c in self.captions if c.number == number), None)
+            if number and caption and len(boxes) == 1:
+                out[(boxes[0].name, boxes[0].rect)] = (f"{caption.number}. {caption.text}", None, "caption")
+        return out
+
+    def _in_sentence(self, box: FormBox, cell: BBox, claimed: set[int]) -> tuple[str | None, str]:
+        """A blank's printed label when it sits inside a sentence: the
+        parenthetical printed just under it ("(Hour)", "(Date)"), else the
+        printed words just before it on its line (up to six)."""
+
+        x0, y0, x1, y1 = box.rect
+        under = [
+            w for w in self.words
+            if 0 <= w.bbox[1] - y1 <= 10 and x0 - 4 <= w.center[0] <= x1 + 4 and id(w) not in claimed
+            and _inside(w.center, cell)
+        ]
+        text = _reading(under)
+        if text.startswith("(") and text.endswith(")") and len(text) > 2:
+            return text[1:-1].strip(), "under"
+        before = sorted(
+            (w for w in self.words if w.bbox[2] <= x0 + 1 and abs(w.center[1] - (y0 + y1) / 2) <= max(3.0, (y1 - y0) / 2)),
+            key=lambda w: -w.bbox[2],
+        )
+        run: list[PrintedLine] = []
+        for w in before:
+            edge = run[-1].bbox[0] if run else x0
+            if edge - w.bbox[2] > (6 if run else 25) or len(run) == 6 or w.text.endswith((".", ";", ":")) and run:
+                break
+            if any(_inside(w.center, other.rect) for other in self.boxes):
+                break
+            run.append(w)
+        text = _reading(run)
+        return (text, "sentence") if re.search(r"[A-Za-z]{2}", text) else (None, "")
+
+    def _letter_above(self, cell: BBox) -> str | None:
+        """The letter of the one lettered caption printed directly above a
+        cell and across it, if exactly one is."""
+
+        middle = (cell[0] + cell[2]) / 2
+        found = {
+            match.group(1)
+            for line in self.lines
+            if (match := _LETTERED.match(line.text))
+            and cell[1] - 14 <= line.bbox[3] <= cell[1] + 3 and line.bbox[0] - 2 <= middle <= line.bbox[2] + 40
+        }
+        return found.pop() if len(found) == 1 else None
 
     def box_cells(self, box: FormBox) -> tuple[BBox, BBox | None]:
         """A box's own cell, and the cell it is drawn inside when its own
@@ -368,6 +570,10 @@ class FormPage:
         )
 
 
+def _union_box(a: BBox, b: BBox) -> BBox:
+    return (min(a[0], b[0]), min(a[1], b[1]), max(a[2], b[2]), max(a[3], b[3]))
+
+
 def _join_captions(lines: list[PrintedLine], horizontal: list[Rule], boxes: list[FormBox]) -> list[Caption]:
     """Each numbered caption with the lines printed under it in its cell
     ("10. FOR" / "INFORMATION" / "CALL:"), stopping at a note in
@@ -379,6 +585,7 @@ def _join_captions(lines: list[PrintedLine], horizontal: list[Rule], boxes: list
         if not match:
             continue
         words = [match.group(2)]
+        area = line.bbox
         bottom = line.bbox[3]
         height = line.bbox[3] - line.bbox[1]
         for following in sorted((l for l in lines if l.bbox[1] > line.bbox[1]), key=lambda l: l.bbox[1]):
@@ -397,7 +604,8 @@ def _join_captions(lines: list[PrintedLine], horizontal: list[Rule], boxes: list
                 break
             words.append(text)
             bottom = following.bbox[3]
-        captions.append(Caption(match.group(1), normalize_space(" ".join(words)), line.bbox))
+            area = _union_box(area, following.bbox)
+        captions.append(Caption(match.group(1), normalize_space(" ".join(words)), line.bbox, area))
     return captions
 
 
@@ -467,6 +675,10 @@ def read_page(page, page_number: int) -> FormPage | None:
     )
     form = FormPage(page_number, frame, horizontal, vertical, lines, every, boxes)
     form.captions = _join_captions(lines, horizontal, boxes)
+    form.words = [
+        PrintedLine(w[4], (w[0], w[1], w[2], w[3])) for w in page.get_text("words")
+        if not any(_covered((w[0], w[1], w[2], w[3]), b.rect) >= 0.6 for b in boxes)
+    ]
     return form
 
 

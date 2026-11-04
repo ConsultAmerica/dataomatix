@@ -98,6 +98,8 @@ export interface LayoutField {
   item_start?: boolean;
   /** A sub-field's printed letter under its item ("A" in "10 → A. NAME"). */
   sub_item?: string | null;
+  /** A fillable box's own description ("10 Enter the Name of the person …"), when the page prints its label. */
+  help_text?: string;
   /** Its item's id, else its section's id. */
   parent_id?: string;
   quality?: QualityCode;

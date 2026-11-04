@@ -137,9 +137,20 @@ export default function StagingDatasetTable({
 
   const allColumns = useMemo(() => gridColumns(dataset), [dataset]);
   const columnKey = allColumns.map((column) => column.canonical_field).join("|");
+  // Columns no record fills ("Regulation", "Amount" on a contract without
+  // them) start hidden — said so beside the count, one click to show.
+  const emptyFields = useMemo(() => {
+    const empty = new Set(allColumns.filter((column) => !dataset.records.some((record) => {
+      const value = record.cells[column.canonical_field]?.value;
+      return value != null && String(value).trim() !== "";
+    })).map((column) => column.canonical_field));
+    return dataset.records.length > 0 && empty.size < allColumns.length ? empty : new Set<string>();
+  }, [allColumns, dataset.records]);
+  const emptyKey = [...emptyFields].join("|");
   useEffect(() => {
-    setHiddenFields((current) => (current.size === 0 ? current : new Set()));
-  }, [columnKey]);
+    setHiddenFields(new Set(emptyKey ? emptyKey.split("|") : []));
+  }, [columnKey, emptyKey]);
+  const hiddenEmpty = [...emptyFields].filter((field) => hiddenFields.has(field)).length;
   const shownColumns = useMemo(
     () => allColumns.filter((column) => !hiddenFields.has(column.canonical_field)),
     [allColumns, hiddenFields],
@@ -424,6 +435,7 @@ export default function StagingDatasetTable({
                     aria-label={`Show column ${column.display_label}`}
                   />
                   <span className="truncate">{column.display_label}</span>
+                  {emptyFields.has(column.canonical_field) && <span className="ml-auto shrink-0 text-[11px] text-text-muted">empty</span>}
                 </label>
               );
             })}
@@ -443,6 +455,16 @@ export default function StagingDatasetTable({
         {sorted.length.toLocaleString()} of {dataset.records.length.toLocaleString()} record
         {dataset.records.length === 1 ? "" : "s"}
       </span>
+      {hiddenEmpty > 0 && (
+        <button
+          type="button"
+          onClick={() => setHiddenFields((current) => new Set([...current].filter((field) => !emptyFields.has(field))))}
+          className="text-xs text-text-secondary underline-offset-2 hover:text-foreground hover:underline"
+          data-testid="empty-columns"
+        >
+          {hiddenEmpty} empty column{hiddenEmpty === 1 ? "" : "s"} hidden · Show
+        </button>
+      )}
       {hasStatus && <FieldToneLegend />}
       {fullText && (
         <label className="ml-auto flex items-center gap-1.5 text-xs text-text-secondary">

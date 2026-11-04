@@ -98,7 +98,7 @@ vi.mock("@/lib/verification", async (importOriginal) => ({
   findValue: findMock,
 }));
 
-function Harness({ initial = "original" }: { initial?: "original" | "business" | "validation" | "summary" }) {
+function Harness({ initial = "business" }: { initial?: "business" | "validation" | "summary" }) {
   const [view, setView] = useState<string>(initial);
   return (
     <VerificationWorkspace documentId="d1" documentName="brief.pdf" pageCount={2} stagingProfileId="contract_v3"
@@ -114,19 +114,27 @@ beforeEach(() => {
 
 describe("tabs", () => {
   it("keeps Summary last and shows Tables / Oracle only where the document uses them", () => {
-    expect(visibleTabs(structure, business)).toEqual(["original", "business", "advanced", "validation", "oracle", "history", "summary"]);
+    expect(visibleTabs(structure, business)).toEqual(["business", "validation", "oracle"]);
     const withTables = { ...structure, stats: { ...structure.stats, tables: 1 } };
-    expect(visibleTabs(withTables, { ...business, document_class: "identity" })).toEqual(["original", "business", "advanced", "tables", "validation", "history", "summary"]);
+    expect(visibleTabs(withTables, { ...business, document_class: "identity" })).toEqual(["business", "tables", "validation"]);
+    // A FAR Part's table lives in the Advanced Grid.
+    expect(visibleTabs(structure, business, true)).toEqual(["business", "advanced", "validation", "oracle"]);
   });
 });
 
 describe("VerificationWorkspace", () => {
-  it("shares one selection between Original Structure and Smart Review, without approving anything", async () => {
+  it("has no Original File view: an old link or stored tab opens Smart Review", async () => {
+    render(<VerificationWorkspace documentId="d1" documentName="brief.pdf" pageCount={2} stagingProfileId="contract_v3" view={"original" as never} onViewChange={() => {}} />);
+    expect(await screen.findByRole("article", { name: "Contractor Name" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Smart Review" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.queryByRole("tab", { name: "Original File" })).toBeNull();
+    expect(screen.queryByTestId("original-structure")).toBeNull();
+  });
+
+  it("selects and exports records in Smart Review, without approving anything", async () => {
     render(<Harness />);
-    fireEvent.click(await screen.findByLabelText("Select Legal Entity"));
+    fireEvent.click(await screen.findByLabelText("Select Contractor Name"));
     expect(screen.getByTestId("selected-records")).toHaveTextContent("1 selected record");
-    fireEvent.click(screen.getByRole("tab", { name: "Smart Review" }));
-    expect(await screen.findByLabelText("Select Contractor Name")).toBeChecked();
     expect(reviewMock).not.toHaveBeenCalled();
 
     fireEvent.change(screen.getByLabelText("Export format"), { target: { value: "csv" } });
@@ -138,17 +146,17 @@ describe("VerificationWorkspace", () => {
 
   it("opens a field's exact source region and reviews selected records with Approve & Next", async () => {
     render(<Harness />);
-    fireEvent.click((await screen.findAllByTestId("layout-field-row"))[0]);
+    const card = await screen.findByRole("article", { name: "Contractor Name" });
+    fireEvent.click(within(card).getByRole("button", { name: "ORBITAL FIELD SERVICES, LLC" }));
     expect(screen.getByTestId("viewer")).toHaveTextContent("page 1 region");
-    fireEvent.click(screen.getByLabelText("Select all fields and table rows"));
+    fireEvent.click(screen.getByLabelText("Select all records in Contractor Information"));
     fireEvent.click(screen.getByRole("button", { name: "Review selected" }));
     const bar = screen.getByTestId("review-selected-bar");
-    expect(bar).toHaveTextContent("Reviewing 1 of 2");
+    expect(bar).toHaveTextContent("Reviewing 1 of 1");
     await act(async () => {
       fireEvent.click(within(bar).getByRole("button", { name: "Approve & Next" }));
     });
     expect(reviewMock).toHaveBeenCalledWith("d1", ["field:1:a:legal-entity:0"], "accept", {});
-    expect(screen.getByTestId("review-selected-bar")).toHaveTextContent("Reviewing 2 of 2");
   });
 
   it("shows confidence, validation and review separately and corrects inline", async () => {
@@ -187,6 +195,15 @@ describe("VerificationWorkspace", () => {
     expect(screen.getByTestId("viewer")).toHaveTextContent("page 1");
   });
 
+  it("keeps a view opened by link, which shows a tab only while it is open", async () => {
+    render(<Harness initial="summary" />);
+    const views = await screen.findByRole("tablist", { name: "Document workspace" });
+    expect(within(views).getByRole("tab", { name: "Summary" })).toHaveAttribute("aria-selected", "true");
+    fireEvent.click(within(views).getByRole("tab", { name: "Validation" }));
+    expect(within(views).queryByRole("tab", { name: "Summary" })).toBeNull();
+    expect(screen.queryByRole("button", { name: /More views/ })).toBeNull();
+  });
+
   it("puts the expiration status in Summary, the last tab", async () => {
     render(<Harness initial="summary" />);
     expect(await screen.findByTestId("expiration-status")).toHaveTextContent("Unknown");
@@ -196,7 +213,8 @@ describe("VerificationWorkspace", () => {
 
   it("opens a record's details beside the list, with original, extracted and reviewed values", async () => {
     render(<Harness />);
-    fireEvent.click((await screen.findAllByTestId("layout-field-row"))[0]);
+    const card = await screen.findByRole("article", { name: "Contractor Name" });
+    fireEvent.click(within(card).getByRole("button", { name: "ORBITAL FIELD SERVICES, LLC" }));
     const details = await screen.findByTestId("record-details");
     expect(details).toHaveTextContent("Original labelLegal Entity");
     expect(details).toHaveTextContent("Display labelContractor Name (Contractor Information)");
@@ -208,7 +226,8 @@ describe("VerificationWorkspace", () => {
 
   it("counts missing, failed, conflicting and pending separately", async () => {
     render(<Harness />);
-    await screen.findAllByTestId("layout-field-row");
+    await screen.findByRole("article", { name: "Contractor Name" });
+    await waitFor(() => expect(screen.getByTestId("count-pending")).toHaveTextContent("2Pending review"));
     expect(screen.getByTestId("count-conflicts")).toHaveTextContent("1Conflicting candidates");
     expect(screen.getByTestId("count-pending")).toHaveTextContent("2Pending review");
     expect(reviewCounts(structure, business, validation)).toEqual({ missing: 0, failures: 0, conflicts: 1, pending: 2 });
@@ -226,16 +245,16 @@ describe("VerificationWorkspace", () => {
   });
 
   it("approves the selection only after confirming, record by record", async () => {
-    reviewMock.mockResolvedValueOnce({ results: [{ record_key: "a", ok: true }, { record_key: "b", ok: false, error: "This value failed validation" }], reviewed: 1 } as never);
+    reviewMock.mockResolvedValueOnce({ results: [{ record_key: "a", ok: false, error: "This value failed validation" }], reviewed: 0 } as never);
     render(<Harness />);
-    fireEvent.click(await screen.findByLabelText("Select all fields and table rows"));
+    fireEvent.click(await screen.findByLabelText("Select all records in Contractor Information"));
     fireEvent.click(screen.getByRole("button", { name: "Approve selected…" }));
     expect(reviewMock).not.toHaveBeenCalled();
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Approve" }));
+      fireEvent.click(within(screen.getByTestId("selection-toolbar")).getByRole("button", { name: "Approve" }));
     });
-    expect(reviewMock).toHaveBeenCalledWith("d1", ["field:1:a:legal-entity:0", "field:1:a:cage:0"], "accept");
-    expect(screen.getByRole("status")).toHaveTextContent("1 approved; 1 not approved (This value failed validation)");
+    expect(reviewMock).toHaveBeenCalledWith("d1", ["field:1:a:legal-entity:0"], "accept");
+    expect(screen.getByRole("status")).toHaveTextContent("0 approved; 1 not approved (This value failed validation)");
   });
 });
 
@@ -264,7 +283,7 @@ function GridHarness() {
   useEffect(() => {
     gridStore = grid;
   });
-  const [view, setView] = useState<string>("original");
+  const [view, setView] = useState<string>("business");
   return (
     <VerificationWorkspace documentId="d1" documentName="brief.pdf" pageCount={2} stagingProfileId="contract_v3"
       view={view as never} onViewChange={(next) => setView(next)} workbook={workbook} gridSelection={grid} />
@@ -274,10 +293,10 @@ function GridHarness() {
 describe("Advanced Grid selection", () => {
   it("selects the grid cell that is the same record, and back", async () => {
     render(<GridHarness />);
-    fireEvent.click(await screen.findByLabelText("Select Legal Entity"));
+    fireEvent.click(await screen.findByLabelText("Select Contractor Name"));
     await waitFor(() => expect(gridStore!.get(storeKey("d1", "key_fields")).get("r1")?.has("value")).toBe(true));
     act(() => gridStore!.set(storeKey("d1", "key_fields"), (current) => setCells(current, ["r1"], ["value"], false),
       { documentId: "d1", datasetId: "key_fields", datasetName: "Key Fields" }));
-    await waitFor(() => expect(screen.getByLabelText("Select Legal Entity")).not.toBeChecked());
+    await waitFor(() => expect(screen.getByLabelText("Select Contractor Name")).not.toBeChecked());
   });
 });

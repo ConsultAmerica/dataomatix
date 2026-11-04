@@ -521,7 +521,7 @@ export default function ReviewQueuePage() {
                   >
                     <div className="min-w-0">
                       <Link
-                        href={`/documents/${entry.document_id}?view=qa`}
+                        href={`/documents/${entry.document_id}?view=qa&tab=business`}
                         className="block truncate text-sm font-medium text-foreground hover:text-primary hover:underline"
                       >
                         {entry.original_filename}
@@ -557,7 +557,7 @@ export default function ReviewQueuePage() {
                       </button>
 
                       <Link
-                        href={`/documents/${entry.document_id}?view=qa`}
+                        href={`/documents/${entry.document_id}?view=qa&tab=business`}
                         className="inline-flex h-8 items-center rounded-lg bg-primary px-3 text-xs font-semibold text-white hover:bg-primary-deep"
                       >
                         Review

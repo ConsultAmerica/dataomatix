@@ -39,7 +39,7 @@ export default function ThemeToggle() {
       aria-pressed={dark}
       aria-label={dark ? "Use light theme" : "Use dark theme"}
       title={dark ? "Light theme" : "Dark theme"}
-      className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/15 text-white/85 hover:bg-white/10"
+      className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border text-text-secondary hover:bg-surface-soft hover:text-foreground"
       data-testid="theme-toggle"
     >
       {dark ? <Sun className="h-4 w-4" aria-hidden="true" /> : <Moon className="h-4 w-4" aria-hidden="true" />}

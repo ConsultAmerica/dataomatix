@@ -304,6 +304,10 @@ _FORM_NUMBER = re.compile(r"^(\d{1,3}[A-Za-z]?)[.)]?\s+(?=\S)")
 # A ruled form box's code before its caption: "a ", "1 ", "15 ", "12a ".
 # "a ", "15 ", "12a ", and a drawn form's "12B. " / "12 A. ".
 _BOX_CODE_PREFIX = re.compile(r"^(?:[a-z]|\d{1,3}(?:\s?[A-Za-z])?)[.)]?\s+")
+# A printed item number opening a label ("20. AMOUNT"), and a sub-item's
+# letter ("A. NAME").
+_ITEM_NUMBER = re.compile(r"^\d{1,3}[A-Z]?\.\s")
+_SUB_LETTER = re.compile(r"^[A-Z]\.\s+")
 # Parentheticals closing a box caption: instructions, not the field's name.
 _TRAILING_INSTRUCTION = re.compile(r"(?:\s*\([^()]*\))+\s*$")
 # "(To be completed by the Government)": who fills the box, not its name.
@@ -402,6 +406,11 @@ class _FormInfo:
     caption: str | None
     # A box with no description of its own: the wording printed beside it.
     beside: str | None = None
+    # What the page prints for this box (form_geometry.printed_labels):
+    # its label, its sub-item letter, and a choice's full option wording.
+    printed: str | None = None
+    letter: str | None = None
+    option: str | None = None
 
 
 def caption_name(text: str) -> str:
@@ -436,12 +445,17 @@ def _form_boxes(
     infos: dict[str, _FormInfo] = {}
     joined: set[tuple[int, str, tuple[float, ...]]] = set()
     extra: list[FieldCandidate] = []
+    printed = {page: form.printed_labels() for page, form in forms.items()}
 
     def info(form: FormPage, box: FormBox, label: str) -> _FormInfo:
         described = form_label(label)[0]
         number, source = form.printed_number(box, described)
         caption = next((c.text for c in form.captions if c.number == number), None)
-        return _FormInfo(box, number, source, described, caption, None if box.described else form.text_beside(box))
+        text, letter, _ = printed[form.page].get((box.name, box.rect), (None, None, None))
+        return _FormInfo(
+            box, number, source, described, caption, None if box.described else form.text_beside(box),
+            printed=text, letter=letter, option=form.option_label(box) if box.is_choice else None,
+        )
 
     for c in candidates:
         form = forms.get(c.page or 0)
@@ -958,6 +972,25 @@ def _field_payload(item: _Field, review: StructureRecordReview | None = None, fo
             if form.beside:
                 # Its internal name ("dummy Field Name3") says nothing; the page does.
                 payload["form_item"]["name"] = form.beside
+            # The page's own wording names the box; the box's description
+            # ("10 Enter the Name of the person …") is kept as help text.
+            shown = form.option if form.box.is_choice else form.printed
+            if shown:
+                own = _BOX_CODE_PREFIX.match(shown) if not form.box.is_choice else None
+                name = shown[own.end():] if own and _ITEM_NUMBER.match(shown) else shown
+                letter = _SUB_LETTER.match(name)
+                if letter:
+                    name = name[letter.end():]
+                if not form.box.is_choice:
+                    name = _TRAILING_INSTRUCTION.sub("", name) or name
+                payload["form_item"]["name"] = name.strip().rstrip(":") or name
+                payload["label"] = shown
+                if shown != c.label_text:
+                    payload["help_text"] = c.label_text
+            if form.letter:
+                payload["form_item"]["sub"] = form.letter
+                if form.caption:
+                    payload["form_item"]["parent"] = caption_name(form.caption)
             if form.box.is_choice:
                 # Selected, Not Selected, or a state the box doesn't define;
                 # the form's own value ("1", "Off") stays as extracted.

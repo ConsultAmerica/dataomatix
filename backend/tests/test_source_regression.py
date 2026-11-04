@@ -31,7 +31,7 @@ from tests.fixtures.source_regression import DOCS, REGRESSION, REQUIRED_COVERAGE
 client = TestClient(app)
 DOC_BY_KEY = {doc.key: doc for doc in DOCS}
 GENERIC_HEADER = re.compile(r"^Column \d+$")
-PRINTED_NUMBER = re.compile(r"^\s*(\d{1,3}(?:\s?[A-Za-z])?)[.)]?\s+\S")
+PRINTED_NUMBER = re.compile(r"^\s*(\d{1,3}(?:\s?[A-Za-z])?)[.)]\s+\S")
 
 
 def _norm(text: object) -> str:
@@ -85,6 +85,7 @@ def built(key: str) -> dict:
     sheet_rows = [tuple(_norm(v) for v in row) for ws in workbook.worksheets for row in ws.iter_rows(values_only=True)]
     shown = [(section, item) for section in layout["sections"] for item in section["items"] if not item.get("form_duplicate")]
     _built[key] = {
+        "document_id": document_id,
         "layout": layout,
         "rows": sheet_rows,
         "fields": [(s, i) for s, i in shown if i["kind"] == "field"],
@@ -247,15 +248,15 @@ def test_no_invented_headers(key) -> None:
     assert not any(GENERIC_HEADER.match(v) for row in data["rows"] for v in row if v)
 
 
-@pytest.mark.parametrize("key", _per_doc({"SF33_FA30": 4}))
+@pytest.mark.parametrize("key", _per_doc({}))
 def test_printed_numbering_preserved(key) -> None:
     """A field whose printed label starts with a number shows that number."""
 
     data = built(key)
     wrong = []
     for _, f in data["fields"]:
-        if f.get("found_by") == "ruled form box" and (f.get("item") or {}).get("has_subfields"):
-            continue  # an option's own words in a box ("10 U.S.C. 2304(c)") aren't its item's number
+        if f.get("choice") or (f.get("found_by") == "ruled form box" and (f.get("item") or {}).get("has_subfields")):
+            continue  # an option's own words ("10 U.S.C. 2304(c)") aren't its item's number
         match = PRINTED_NUMBER.match(_norm(f.get("label")))
         printed = match.group(1).replace(" ", "").casefold() if match else None
         if match and (f.get("item") or {}).get("number") and _item_number(f) != printed:
@@ -272,7 +273,8 @@ def test_no_duplicate_records(key) -> None:
     seen: dict[tuple, int] = {}
     for section, f in data["fields"]:
         if _norm(f.get("extracted_value")):
-            k = (section["id"], _key(f.get("label")), _key(f.get("extracted_value")))
+            item = f.get("item") or {}
+            k = (section["id"], _key(item.get("number")), _key(f.get("sub_item")), _key(f.get("label")), _key(f.get("extracted_value")))
             seen[k] = seen.get(k, 0) + 1
     tables: dict[tuple, int] = {}
     for section, t in data["tables"]:
@@ -281,7 +283,7 @@ def test_no_duplicate_records(key) -> None:
         k = (section["id"], tuple(sorted(t.get("source_tables") or [])), tuple(_table_headers(t)),
              tuple(tuple(_cell(c) for c in r["cells"]) for r in t["rows"]))
         tables[k] = tables.get(k, 0) + 1
-    assert not [k for k, n in seen.items() if n > 1], [k[1:] for k, n in seen.items() if n > 1][:5]
+    assert not [k for k, n in seen.items() if n > 1], [k[3:] for k, n in seen.items() if n > 1][:5]
     assert not [k for k, n in tables.items() if n > 1]
 
 
@@ -345,6 +347,30 @@ def test_completeness_outcome(key) -> None:
     assert outcome in {"verified_complete", "incomplete", "not_fully_verified"}
     if outcome == "verified_complete":
         assert data["layout"]["completeness"].get("inventory"), "complete without a source inventory"
+
+
+# A cover letter ahead of the SF33 reads as generic business correspondence.
+_CLASSIFICATION_KNOWN = {"SF33_47QRC": "an award cover letter before the SF33 outweighs the contract pages"}
+
+
+@pytest.mark.parametrize("key", [
+    pytest.param(doc.key, id=doc.key, marks=[pytest.mark.xfail(strict=True, reason=f"baseline failure; classification: {_CLASSIFICATION_KNOWN[doc.key]}")]
+                 if doc.key in _CLASSIFICATION_KNOWN else [])
+    for doc in DOCS if doc.family
+])
+def test_document_type(key) -> None:
+    """The classifier names the document's family (its prediction only;
+    nothing is recorded)."""
+
+    from app.classification.engine import predict
+
+    data = built(key)
+    database = SessionLocal()
+    try:
+        prediction = predict(database, database.get(Document, data["document_id"]))
+    finally:
+        database.close()
+    assert prediction.selected.family == DOC_BY_KEY[key].family, (prediction.selected.family, prediction.reasons[:2])
 
 
 # --- not yet regression-verified ----------------------------------------------

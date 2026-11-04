@@ -27,7 +27,7 @@ export default function GlobalHeader({ onOpenSearch }: GlobalHeaderProps) {
         {/* Brand — never shrink */}
         <div className="header-left">
           <Link href="/" className="header-brand-link" aria-label="Dataomatix home">
-            <DataomatixLogo variant="wordmark" tone="onDark" size={42} />
+            <DataomatixLogo variant="wordmark" tone="onLight" size={42} />
           </Link>
         </div>
 
@@ -65,7 +65,7 @@ export default function GlobalHeader({ onOpenSearch }: GlobalHeaderProps) {
 
           {/* The public header stays lean: the profile only (no backend status
               or environment; connection problems surface where they matter). */}
-          <div className="flex shrink-0 items-center gap-2 border-l border-white/10 pl-3">
+          <div className="flex shrink-0 items-center gap-2 border-l border-border pl-3">
             <span className="hidden xl:inline-flex">
               <UserChip showRole={false} />
             </span>

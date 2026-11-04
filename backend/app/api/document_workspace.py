@@ -98,6 +98,76 @@ def get_business_data(
     return context["business"]
 
 
+def _clause_outline(database: Session, document: Document) -> dict[str, Any]:
+    """The Extracted Data dataset: one builder for the view and the export."""
+
+    from app.models.document_page import DocumentPage
+    from app.services.clause_outline import build_outline
+
+    layout = workspace_context(database, document)["layout"] or {}
+    tables = [item for section in layout.get("sections") or [] for item in section.get("items") or [] if item.get("kind") == "table"]
+    return build_outline(
+        ((page.page_number, page.final_text or "")
+         for page in database.scalars(select(DocumentPage).where(DocumentPage.document_id == document.id))),
+        tables,
+    )
+
+
+@router.get("/{document_id}/clause-outline")
+def get_clause_outline(
+    document_id: str,
+    database: Session = Depends(get_database),
+    actor: ActorContext = Depends(require_permission("documents.view")),
+) -> dict[str, Any]:
+    """Sections, clauses, paragraphs and tables with their original text, the
+    table of contents left out (services/clause_outline.py) — the rows the
+    Extracted Data view shows and its Excel export writes. Read only."""
+
+    return {"document_id": document_id, **_clause_outline(database, _document(database, document_id))}
+
+
+def _outline_workbook(database: Session, document_ids: list[str]) -> tuple[bytes, str]:
+    from app.services.clause_outline import build_outline_xlsx
+
+    documents = [_document(database, document_id) for document_id in dict.fromkeys(document_ids)]
+    outlines = [(document.original_filename or "document", _clause_outline(database, document)) for document in documents]
+    if all(outline["style"] == "none" for _, outline in outlines):
+        raise HTTPException(status_code=409, detail="No numbered sections or clauses found — use the Original File export for this document's fields.")
+    name = f"{PurePath(outlines[0][0]).stem} - extracted data.xlsx" if len(outlines) == 1 else f"Extracted data - {len(outlines)} documents.xlsx"
+    return build_outline_xlsx(outlines), name
+
+
+def _xlsx(content: bytes, name: str) -> Response:
+    return Response(content=content, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    headers={"Content-Disposition": attachment_header(name)})
+
+
+@router.get("/{document_id}/extracted-data.xlsx")
+def export_extracted_data(
+    document_id: str,
+    database: Session = Depends(get_database),
+    actor: ActorContext = Depends(require_permission("export.read")),
+) -> Response:
+    """Extracted Data as Excel: the same columns, rows and values as the view."""
+
+    return _xlsx(*_outline_workbook(database, [document_id]))
+
+
+class ExtractedDataExportIn(BaseModel):
+    document_ids: list[str] = Field(min_length=1, max_length=50)
+
+
+@router.post("/extracted-data/export.xlsx")
+def export_extracted_data_many(
+    payload: ExtractedDataExportIn,
+    database: Session = Depends(get_database),
+    actor: ActorContext = Depends(require_permission("export.read")),
+) -> Response:
+    """Several documents' Extracted Data, one worksheet each."""
+
+    return _xlsx(*_outline_workbook(database, payload.document_ids))
+
+
 @router.get("/{document_id}/validation-summary")
 def get_validation_summary(
     document_id: str,

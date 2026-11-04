@@ -842,18 +842,20 @@ def ruled_form_id() -> str:
 
 def test_form_boxes_take_the_item_number_the_page_prints(ruled_form_id: str) -> None:
     by_name = {f["field_name"]: f for f in _fields(_form_layout(ruled_form_id))}
-    issued = by_name["Issued By"]
+    # Named as printed ("7. ISSUED BY", "CODE"), not by the boxes' own
+    # descriptions, which are kept as help text.
+    issued = by_name["ISSUED BY"]
     # Printed as item 7; the box's own description says 5, and that is kept.
     assert issued["item"]["number"] == "7"
     assert issued["form_item"]["number_source"] == "printed" and issued["form_item"]["described_as"] == "5"
-    assert issued["label"].startswith("5 Enter the info")
+    assert issued["label"] == "7. ISSUED BY" and issued["help_text"].startswith("5 Enter the info")
     # The code box drawn inside item 7 is item 7's, though it has no number of its own.
-    assert by_name["Issued By Code"]["item"]["id"] == issued["item"]["id"]
+    assert by_name["CODE"]["item"]["id"] == issued["item"]["id"]
     # Both under the printed caption, which names the item.
     assert issued["item"]["name"] == "Issued By" and issued["item"]["has_subfields"]
     # A box with its own label and no printed number stands alone: no parent is invented.
-    assert by_name["Page Number"]["item"] is None
-    assert by_name["Page Number"]["form_item"]["number_source"] == "none"
+    assert by_name["PAGE"]["item"] is None
+    assert by_name["PAGE"]["form_item"]["number_source"] == "none"
 
 
 def test_without_the_page_geometry_numbers_fall_back_to_the_box_descriptions(ruled_form_id: str) -> None:
@@ -865,7 +867,7 @@ def test_without_the_page_geometry_numbers_fall_back_to_the_box_descriptions(rul
 
 def test_ticked_and_unticked_choices_are_both_shown_with_their_raw_state(ruled_form_id: str) -> None:
     by_name = {f["field_name"]: f for f in _fields(_form_layout(ruled_form_id))}
-    sealed, negotiated = by_name["Sealed Bid (IFB)"], by_name["Negotiated (RFP)"]
+    sealed, negotiated = by_name["SEALED BID (IFB)"], by_name["NEGOTIATED (RFP)"]
     assert (sealed["choice"], negotiated["choice"]) == ("Not Selected", "Selected")
     # A confirmed state, not a blank or missing value; the form's own value is kept.
     assert sealed["form_state"]["state"] == "not_selected" and sealed["quality"] == "confirmed"
@@ -966,7 +968,10 @@ def test_extractor_rows_repeating_the_form_are_kept_but_not_shown(ruled_form_id:
     written = original_rows(layout)
     field_rows = [r.values for r in written if r.kind in ("field", "subfield")]
     assert ["", "Contractor Name", "ACME FEDERAL LLC"] in field_rows
-    assert not [r for r in field_rows if r[1] in ("DESCRIPTION", "SEC", "PAGE")]
+    # The table of contents' headers aren't fields; the page box's own
+    # printed label ("PAGE") is.
+    assert not [r for r in field_rows if r[1] in ("DESCRIPTION", "SEC", "PAGE(S)")]
+    assert [r for r in field_rows if r[1] == "PAGE"] == [["", "PAGE", "1"]]
     assert not [r for r in written if r.values and str(r.values[0]).startswith("7. ISSUED BY")]
 
 
@@ -1000,11 +1005,11 @@ def test_the_form_reads_the_same_in_the_tab_layout_and_the_excel_export(ruled_fo
     # In the form's numbering (item 4, printed beside item 7, comes first).
     assert printed_numbers == ["4", "7", "11", "14"]
     assert ["7", "Issued By", ""] == written[[r[0] for r in written].index("7")][:3]
-    assert ["", "Sealed Bid (IFB)", "Not Selected"] in [r[:3] for r in written]
+    assert ["", "SEALED BID (IFB)", "Not Selected"] in [r[:3] for r in written]
     assert ["11", "Table of Contents", "Source: page 1"] in [r[:3] for r in written]
     assert ["Not Selected", "C", "DESCRIPTION/SPECIFICATIONS", None] in [list(r[:4]) for r in sheet.iter_rows(values_only=True)]
     # The address block: its parts under it, its printed text kept in a note.
-    issued_row = next(i for i, r in enumerate(written) if r[1] == "Issued By" and r[0] == "")
+    issued_row = next(i for i, r in enumerate(written) if r[1] == "ISSUED BY" and r[0] == "")
     assert written[issued_row + 1][1:3] == ["Code", "FA3002"]
     assert "Printed as FA3002" in sheet.cell(row=issued_row + 1, column=3).comment.text
 

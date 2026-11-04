@@ -89,6 +89,9 @@ class Doc:
     key: str
     file: str
     pages: int | None  # first N pages of the source (None: all)
+    # What the document is (a document family), judged from the document
+    # itself, never from the classifier's output.
+    family: str | None = None
     fields: tuple[Field, ...] = ()
     choices: tuple[Choice, ...] = ()
     tables: tuple[Table, ...] = ()
@@ -108,6 +111,7 @@ _THRESHOLDS = (
 DOCS: tuple[Doc, ...] = (
     Doc(
         key="SF1442",
+        family="government_contract",
         file="SF1442 Award_N4019223D2803.pdf",
         pages=4,
         fields=(
@@ -153,6 +157,7 @@ DOCS: tuple[Doc, ...] = (
     ),
     Doc(
         key="SF33_FA30",
+        family="government_contract",
         file="Contract - FA300224C0008 (2).pdf",
         pages=4,
         fields=(
@@ -160,12 +165,12 @@ DOCS: tuple[Doc, ...] = (
             Field(1, "3", "SOLICITATION NUMBER", "FA300223R00090009"),
             Field(1, "5", "DATE ISSUED", "21 Apr 2023"),
             Field(1, "6", "REQUISITION/PURCHASE NUMBER", "F2X3C34150A001"),
-            Field(1, "10", "NAME", "Paul Lewis", parent="FOR INFORMATION CALL", sub="A", fix=4),
-            Field(1, "10", "AREA CODE", "210", parent="FOR INFORMATION CALL", sub="B", fix=4),
-            Field(1, "10", "NUMBER", "652-7824", parent="FOR INFORMATION CALL", sub="B", fix=4),
-            Field(1, "10", "EXTENSION", "", parent="FOR INFORMATION CALL", sub="B", fix=4),
-            Field(1, "10", "EMAIL ADDRESS", "paul.lewis.16@us.af.mil", parent="FOR INFORMATION CALL", sub="C", fix=4),
-            Field(1, "20", "AMOUNT", "USD 24,131,140.28", fix=4),
+            Field(1, "10", "NAME", "Paul Lewis", parent="FOR INFORMATION CALL", sub="A"),
+            Field(1, "10", "AREA CODE", "210", parent="FOR INFORMATION CALL", sub="B"),
+            Field(1, "10", "NUMBER", "652-7824", parent="FOR INFORMATION CALL", sub="B"),
+            Field(1, "10", "EXTENSION", "", parent="FOR INFORMATION CALL", sub="B"),
+            Field(1, "10", "EMAIL ADDRESS", "paul.lewis.16@us.af.mil", parent="FOR INFORMATION CALL", sub="C"),
+            Field(1, "20", "AMOUNT", "USD 24,131,140.28"),
         ),
         choices=(
             # SF33 prints the options in full (corrected from "NEGOTIATED (RFP)").
@@ -182,13 +187,14 @@ DOCS: tuple[Doc, ...] = (
         ),
         no_loose_fields=(
             NoLooseField(r"^(label|name):\s*(\d+\s+)?(Enter |Click here|Sign here|Check if)",
-                         "PDF help text used as a field name", fix=4),
+                         "PDF help text used as a field name"),
             NoLooseField(r"^(label|name):\s*Product Service Code$", "line-item attribute outside its record", fix=5),
             NoLooseField(r"^(label|name):\s*Pricing Arrangement$", "line-item attribute outside its record", fix=5),
         ),
     ),
     Doc(
         key="SF33_47QRC",
+        family="government_contract",
         file="Contract_47QRCA25DSF07 (2).pdf",
         pages=4,
         fields=(
@@ -197,10 +203,10 @@ DOCS: tuple[Doc, ...] = (
             Field(2, "5", "DATE ISSUED", "02/03/2025"),
             Field(2, "6", "REQUISITION/PURCHASE NUMBER", "PR-24-0000408"),
             Field(2, "7", "CODE", "47QRCA", parent="ISSUED BY"),
-            Field(2, "10", "NAME", "Gabrina Daniels", parent="FOR INFORMATION CALL", sub="A", fix=4),
-            Field(2, "10", "AREA CODE", "240", parent="FOR INFORMATION CALL", sub="B", fix=4),
-            Field(2, "10", "NUMBER", "541-1679", parent="FOR INFORMATION CALL", sub="B", fix=4),
-            Field(2, "10", "E-MAIL ADDRESS", "gabrina.daniels@gsa.gov", parent="FOR INFORMATION CALL", sub="C", fix=4),
+            Field(2, "10", "NAME", "Gabrina Daniels", parent="FOR INFORMATION CALL", sub="A"),
+            Field(2, "10", "AREA CODE", "240", parent="FOR INFORMATION CALL", sub="B"),
+            Field(2, "10", "NUMBER", "541-1679", parent="FOR INFORMATION CALL", sub="B"),
+            Field(2, "10", "E-MAIL ADDRESS", "gabrina.daniels@gsa.gov", parent="FOR INFORMATION CALL", sub="C"),
             Field(2, "20", "AMOUNT", "$2,500.00"),
             Field(2, "26", "NAME OF CONTRACTING OFFICER", "Esther Shannon"),
             Field(2, "28", "AWARD DATE", "04/15/2025"),
@@ -224,12 +230,14 @@ DOCS: tuple[Doc, ...] = (
     ),
     Doc(
         key="FAR51_pdf",
+        family="far_regulation",
         file="far_part_51.pdf",
         pages=None,
         not_tables=(NotATable(None, "51.101", "regulation text"),),
     ),
     Doc(
         key="FAR_final_rule",
+        family="far_regulatory_change",
         file="far_final_rule_2026-04912.pdf",
         pages=None,
         tables=(
@@ -238,6 +246,10 @@ DOCS: tuple[Doc, ...] = (
                 "Australia FTA": ("105,767", "105,767", "6,683,000"),
                 "Israeli Trade Act": ("50,000",),
             }),
+            # A real one-row ruled table with short printed headers (FAR is a
+            # word here, not a sign of prose).
+            Table(1, ("Subject", "FAR case"), rows={"Trade Agreements Thresholds": ("2025–007",)}, row_count=1),
+            Table(4, ("Subject", "FAR case"), rows={"Trade Agreements Thresholds": ("2025–007",)}, row_count=1),
             # Page 3 prints the last header correctly ("Construction contract").
             Table(3, _THRESHOLDS[:3] + ("Construction contract (equal to or exceeding)",),
                   rows={"Bahrain FTA": ("174,000", "174,000", "13,749,689")}),
@@ -247,9 +259,11 @@ DOCS: tuple[Doc, ...] = (
             NotATable(4, "Commercial Products and Commercial", "multi-column narrative"),
         ),
     ),
-    Doc(key="contract_sample3", file="sample3.pdf", pages=12),
+    # A DOE contract (DE-EM0002639): its sections, clauses and CLINs.
+    Doc(key="contract_sample3", file="sample3.pdf", pages=12, family="government_contract"),
     Doc(
         key="FAR52_html",
+        family="far_regulation",
         file="part_52.html",
         pages=None,
         tables=(
