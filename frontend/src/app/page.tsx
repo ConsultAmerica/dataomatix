@@ -5,15 +5,15 @@ import { useEffect, useState } from "react";
 import { ArrowRight, FileCheck2, ShieldCheck, Sparkles } from "lucide-react";
 
 import DocumentResultsTable from "@/components/document-results-table";
-import HeroShowcase from "@/components/illustrations/hero-showcase";
 import ContentSection from "@/components/layout/ContentSection";
-import CapabilityBand from "@/components/marketing/capability-band";
 import ComparisonSection from "@/components/marketing/comparison-section";
 import ConfidenceReviewSection from "@/components/marketing/confidence-review-section";
 import FeatureStack from "@/components/marketing/feature-stack";
 import LogoMarquee from "@/components/marketing/logo-marquee";
 import NextStepBand from "@/components/marketing/next-step-band";
 import PlaybookPreview from "@/components/marketing/playbook-preview";
+import EvidenceHero from "@/components/studio/evidence-hero";
+import PipelineScene from "@/components/studio/pipeline-scene";
 import { getDashboardStats, listDocuments } from "@/lib/documents";
 import type { DashboardStats, DocumentSummary } from "@/types/document";
 
@@ -88,20 +88,11 @@ export default function HomePage() {
 
   return (
     <>
-      <HeroShowcase
-        eyebrow="Federal contract agents"
-        title={
-          <>
-            Extract with confidence.{" "}
-            <span className="text-gradient-accent">Verify with evidence.</span>
-          </>
-        }
-        description="Agents that read awards, solicitations and modifications: every CLIN, funding line, clause and award field is boxed on its page, sent to a reviewer when it can’t be trusted, and exported Oracle-ready."
-      />
+      <EvidenceHero />
+
+      <PipelineScene />
 
       <LogoMarquee tone="light" />
-
-      <CapabilityBand />
 
       <section className="marketing-band statement-band">
         <div className="marketing-band-inner">

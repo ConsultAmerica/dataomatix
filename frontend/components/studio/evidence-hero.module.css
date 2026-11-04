@@ -1,0 +1,593 @@
+/* Home hero. Paper, ink, and one orange: the evidence box. */
+
+.hero {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  background:
+    radial-gradient(60% 70% at 85% 30%, color-mix(in srgb, var(--dx-accent) 9%, transparent), transparent 70%),
+    radial-gradient(50% 60% at 10% 0%, color-mix(in srgb, var(--dx-blue) 7%, transparent), transparent 70%),
+    var(--background);
+  border-bottom: 1px solid var(--border);
+}
+
+.paperGrain {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-image:
+    linear-gradient(to right, color-mix(in srgb, var(--foreground) 5%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--foreground) 5%, transparent) 1px, transparent 1px);
+  background-size: 64px 64px;
+  mask-image: radial-gradient(70% 70% at 70% 40%, #000 20%, transparent 75%);
+}
+
+.inner {
+  margin: 0 auto;
+  display: grid;
+  max-width: var(--layout-marketing-max);
+  grid-template-columns: minmax(0, 1fr);
+  align-items: center;
+  gap: 3.5rem;
+  padding: 4.5rem 1.5rem 5rem;
+}
+
+@media (min-width: 1100px) {
+  .inner {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 4rem;
+    padding: 6.5rem 3rem 7rem;
+  }
+}
+
+/* Copy */
+.copy {
+  min-width: 0;
+  animation: dx-rise 800ms var(--dx-ease) both;
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface) 80%, transparent);
+  padding: 0.4rem 0.85rem 0.4rem 0.7rem;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  backdrop-filter: blur(8px);
+}
+
+.liveDot {
+  position: relative;
+  height: 0.45rem;
+  width: 0.45rem;
+  border-radius: 999px;
+  background: var(--dx-accent);
+}
+
+.liveDot::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: inherit;
+  border: 1.5px solid var(--dx-accent);
+  animation: dx-ping 2.2s var(--dx-ease) infinite;
+}
+
+.title {
+  margin-top: 1.6rem;
+  font-family: var(--dx-serif);
+  font-size: clamp(2.9rem, 5vw, 4.6rem);
+  font-weight: 400;
+  line-height: 0.98;
+  letter-spacing: -0.025em;
+  color: var(--foreground);
+  text-wrap: balance;
+}
+
+.titleSoft {
+  font-style: italic;
+  color: color-mix(in srgb, var(--foreground) 62%, var(--background));
+}
+
+/* "evidence" gets the same box the agent draws on the page. */
+.evidenceWord {
+  position: relative;
+  color: var(--foreground);
+  white-space: nowrap;
+}
+
+.evidenceWord::after {
+  content: "";
+  position: absolute;
+  inset: 0.12em -0.1em 0.04em -0.08em;
+  border: 1.5px solid var(--dx-accent);
+  border-radius: 0.12em;
+  background: color-mix(in srgb, var(--dx-accent) 6%, transparent);
+  transform-origin: left center;
+  animation: dx-draw 900ms 600ms var(--dx-ease) both;
+}
+
+.lede {
+  margin-top: 1.75rem;
+  max-width: 34rem;
+  font-size: 1.125rem;
+  line-height: 1.65;
+  color: var(--text-secondary);
+}
+
+.actions {
+  margin-top: 2.25rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.primary,
+.secondary {
+  display: inline-flex;
+  height: 3rem;
+  align-items: center;
+  gap: 0.55rem;
+  border-radius: 999px;
+  padding: 0 1.4rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  transition:
+    transform 220ms var(--dx-spring),
+    background 180ms ease,
+    box-shadow 220ms ease,
+    border-color 180ms ease;
+}
+
+.primary {
+  background: var(--dx-ink);
+  color: var(--dx-on-ink);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.12) inset, 0 10px 24px -10px color-mix(in srgb, var(--dx-ink) 70%, transparent);
+}
+
+.primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.12) inset, 0 16px 32px -12px color-mix(in srgb, var(--dx-ink) 75%, transparent);
+}
+
+.primary svg,
+.secondary svg {
+  transition: transform 220ms var(--dx-spring);
+}
+
+.primary:hover svg {
+  transform: translateX(3px);
+}
+
+.secondary {
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--foreground);
+}
+
+.secondary:hover {
+  transform: translateY(-1px);
+  border-color: var(--foreground);
+}
+
+.secondary:hover svg {
+  transform: translate(2px, -2px);
+}
+
+.primary:active,
+.secondary:active {
+  transform: scale(0.98);
+}
+
+.proof {
+  margin-top: 2.25rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem 1.4rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.proof li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.proof svg {
+  color: var(--success);
+}
+
+/* Stage */
+.stage {
+  position: relative;
+  min-width: 0;
+  height: 34rem;
+  animation: dx-rise 900ms 120ms var(--dx-ease) both;
+}
+
+.page {
+  /* Paper stays paper in dark mode, so its ink stays dark too. */
+  --foreground: #0e1322;
+  --text-secondary: #4b5162;
+  --text-muted: #6f7584;
+  --border: #e6e3db;
+  color: var(--foreground);
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: min(25rem, 64%);
+  aspect-ratio: 8.5 / 11;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--dx-page);
+  box-shadow:
+    0 1px 2px rgba(20, 18, 12, 0.05),
+    0 24px 60px -24px rgba(20, 18, 12, 0.28);
+  overflow: hidden;
+  transform: rotate(-1.6deg);
+}
+
+.pageHead {
+  position: absolute;
+  inset: 0 0 auto;
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 2px solid var(--foreground);
+  margin: 1.1rem 1.4rem 0;
+  padding-bottom: 0.45rem;
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--foreground);
+}
+
+.pageForm {
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.pageBody {
+  position: absolute;
+  inset: 3.4rem 1.6rem 1.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.95rem;
+}
+
+.pageGrid {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr;
+  gap: 1rem;
+}
+
+.pageField {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.3rem;
+}
+
+.pageLabel {
+  font-size: 0.6rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.pageValue {
+  position: relative;
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  line-height: 1.45;
+  color: var(--foreground);
+}
+
+.pageValueStrong {
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.pageValueAlt {
+  font-size: 0.66rem;
+  color: var(--text-secondary);
+}
+
+.pageLine,
+.pageLines span {
+  display: block;
+  height: 0.3rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--foreground) 8%, transparent);
+}
+
+.pageLine {
+  margin-top: -0.35rem;
+}
+
+.pageRule {
+  height: 1px;
+  background: var(--border);
+}
+
+.pageLines {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.scan {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 14%;
+  top: -20%;
+  border-bottom: 1px solid color-mix(in srgb, var(--dx-blue) 55%, transparent);
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    color-mix(in srgb, var(--dx-blue) 4%, transparent) 70%,
+    color-mix(in srgb, var(--dx-blue) 22%, transparent) 97%,
+    transparent
+  );
+  opacity: 0;
+}
+
+.page[data-scanning] .scan {
+  animation: dx-scan 5.2s var(--dx-ease-io) both;
+}
+
+.box {
+  position: absolute;
+  inset: -0.28rem -0.4rem;
+  pointer-events: none;
+  border: 1.75px solid var(--dx-accent);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--dx-accent) 8%, transparent);
+  opacity: 0;
+  transform: scale(1.25);
+  transition: opacity 260ms ease, transform 420ms var(--dx-spring);
+}
+
+.box[data-shown],
+.row[data-shown],
+.route[data-shown] {
+  opacity: 1;
+  transform: none;
+}
+
+.boxReview {
+  border-style: dashed;
+  border-color: var(--warning);
+  background: color-mix(in srgb, var(--warning) 9%, transparent);
+}
+
+.boxTag {
+  position: absolute;
+  left: calc(100% + 6px);
+  top: 50%;
+  transform: translateY(-50%);
+  border-radius: 999px;
+  background: var(--dx-accent);
+  padding: 0.1rem 0.4rem;
+  font-family: var(--font-mono);
+  font-size: 0.56rem;
+  font-weight: 600;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.boxReview .boxTag {
+  background: var(--warning);
+}
+
+.panel {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: min(27rem, 70%);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  box-shadow:
+    0 1px 2px rgba(20, 18, 12, 0.05),
+    0 30px 70px -28px rgba(20, 18, 12, 0.35);
+  backdrop-filter: blur(14px) saturate(1.2);
+  padding: 0.5rem;
+}
+
+.panelHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.6rem 0.65rem 0.7rem;
+}
+
+.panelTitle {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+.panelBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border-radius: 999px;
+  background: var(--surface-soft);
+  padding: 0.2rem 0.6rem;
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.panelPulse {
+  height: 0.4rem;
+  width: 0.4rem;
+  border-radius: 999px;
+  background: var(--success);
+  animation: dx-breathe 1.6s ease-in-out infinite;
+}
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 7.2rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.75rem;
+  border-radius: 10px;
+  background: var(--surface);
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  padding: 0.6rem 0.75rem;
+  font-size: 0.78rem;
+  opacity: 0;
+  transform: translateY(10px) scale(0.98);
+  transition: opacity 300ms ease, transform 480ms var(--dx-spring), background 200ms ease;
+}
+
+.rowReview {
+  border-color: color-mix(in srgb, var(--warning) 40%, transparent);
+  background: color-mix(in srgb, var(--warning) 7%, var(--surface));
+}
+
+.rowLabel {
+  color: var(--text-muted);
+}
+
+.rowValue {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  font-weight: 500;
+  color: var(--foreground);
+}
+
+.rowMeta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  color: var(--text-muted);
+}
+
+.conf {
+  position: relative;
+  height: 0.3rem;
+  width: 2.6rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--surface-soft);
+}
+
+.confBar {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: inherit;
+  background: var(--success);
+}
+
+.rowReview .confBar {
+  background: var(--warning);
+}
+
+.route {
+  margin: 0.4rem 0.15rem 0.2rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+  border-radius: 10px;
+  background: var(--dx-ink);
+  padding: 0.65rem 0.8rem;
+  font-size: 0.74rem;
+  color: color-mix(in srgb, var(--dx-on-ink) 80%, transparent);
+  opacity: 0;
+  transform: translateY(10px) scale(0.98);
+  transition: opacity 300ms ease, transform 480ms var(--dx-spring);
+}
+
+.route b {
+  font-weight: 600;
+  color: var(--dx-on-ink);
+}
+
+.routeWho {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--dx-on-ink) 12%, transparent);
+  padding: 0.15rem 0.5rem;
+  color: var(--dx-on-ink);
+}
+
+@media (max-width: 640px) {
+  .stage {
+    height: 36rem;
+  }
+  .page {
+    width: 82%;
+  }
+  .panel {
+    width: 94%;
+  }
+  .row {
+    grid-template-columns: 6rem minmax(0, 1fr) auto;
+  }
+}
+
+/* One 9s loop: each element shows at its own delay, holds, then clears. */
+@keyframes dx-scan {
+  0% { top: -20%; opacity: 0; }
+  8% { opacity: 1; }
+  88% { top: 92%; opacity: 1; }
+  100% { top: 104%; opacity: 0; }
+}
+
+@keyframes dx-draw {
+  from { transform: scaleX(0); opacity: 0; }
+  to { transform: scaleX(1); opacity: 1; }
+}
+
+@keyframes dx-ping {
+  0% { transform: scale(0.6); opacity: 0.9; }
+  80%, 100% { transform: scale(1.9); opacity: 0; }
+}
+
+@keyframes dx-breathe {
+  50% { opacity: 0.35; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .copy,
+  .stage,
+  .evidenceWord::after {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  .scan {
+    display: none;
+  }
+}
+
+@keyframes dx-rise {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: none; }
+}

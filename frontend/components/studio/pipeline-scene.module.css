@@ -1,0 +1,557 @@
+/* "How it works" isometric pipeline band. */
+
+.band {
+  position: relative;
+  border-bottom: 1px solid var(--border);
+  background:
+    radial-gradient(50% 60% at 80% 0%, color-mix(in srgb, var(--dx-blue) 6%, transparent), transparent 70%),
+    var(--background);
+  padding: 5rem 1.5rem 4.5rem;
+}
+
+.head {
+  margin: 0 auto;
+  max-width: 58rem;
+  text-align: center;
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted-foreground, #6b6a64);
+}
+.eyebrow::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 1.5px;
+  background: var(--dx-accent);
+}
+
+.title {
+  margin-top: 0.9rem;
+  font-family: var(--dx-serif);
+  font-weight: 400;
+  font-size: clamp(2.2rem, 4vw, 3.4rem);
+  line-height: 1.05;
+  letter-spacing: -0.015em;
+  color: var(--foreground);
+}
+.title em {
+  font-style: italic;
+  color: color-mix(in srgb, var(--foreground) 62%, transparent);
+}
+
+.lede {
+  margin: 1.1rem auto 0;
+  max-width: 38rem;
+  font-size: 1.02rem;
+  line-height: 1.6;
+  color: var(--muted-foreground, #6b6a64);
+}
+
+.stageWrap {
+  margin: 2.5rem auto 0;
+  max-width: 88rem;
+}
+
+.svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* ---- floor */
+.floor {
+  fill: color-mix(in srgb, var(--dx-blue) 5%, var(--surface, #fff));
+  stroke: color-mix(in srgb, var(--dx-blue) 12%, var(--border));
+  stroke-width: 1;
+}
+.grid line {
+  stroke: color-mix(in srgb, var(--dx-blue) 30%, var(--border));
+  stroke-opacity: 0.55;
+  stroke-width: 0.8;
+  stroke-dasharray: 3 5;
+}
+.floorTag {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 8px;
+  letter-spacing: 0.12em;
+  fill: var(--muted-foreground, #6b6a64);
+}
+
+.trackBase {
+  fill: none;
+  stroke: #fff;
+  stroke-opacity: 0.8;
+  stroke-width: 7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.track {
+  fill: none;
+  stroke: var(--dx-ink);
+  stroke-opacity: 0.4;
+  stroke-width: 1.3;
+  stroke-dasharray: 2 6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  animation: dx-track 1.6s linear infinite;
+}
+@keyframes dx-track {
+  to {
+    stroke-dashoffset: -16;
+  }
+}
+
+.intake {
+  animation: dx-intake 3.2s var(--dx-ease-io, ease-in-out) infinite;
+}
+@keyframes dx-intake {
+  50% {
+    opacity: 0.55;
+  }
+}
+
+/* ---- faces (local plane px) */
+.faceBrand {
+  font-family: var(--dx-serif);
+  font-size: 15px;
+  fill: #0b1530;
+}
+.faceTitle {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  fill: #0b1530;
+}
+.faceMono,
+.faceMonoSm {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 7px;
+  letter-spacing: 0.12em;
+  fill: #0b1530;
+  opacity: 0.6;
+}
+.faceMonoSm {
+  font-size: 5.6px;
+}
+.chipText {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 7px;
+  font-weight: 600;
+  fill: #fff;
+}
+
+/* ---- the source page (stays paper in dark mode) */
+.pageHead {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 6.5px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  fill: #0b1530;
+}
+.pageMeta {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 6px;
+  fill: #0b1530;
+  opacity: 0.55;
+}
+.pageLabel {
+  font-size: 5.6px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  fill: #0b1530;
+  opacity: 0.5;
+}
+.pageValue {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 8px;
+  fill: #0b1530;
+}
+.pageValueStrong {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 9.5px;
+  font-weight: 600;
+  fill: #0b1530;
+}
+
+.beamLine {
+  stroke: #ec6a1f;
+  stroke-opacity: 0.55;
+  stroke-width: 1;
+  stroke-dasharray: 3 4;
+}
+
+.tether {
+  stroke: #0b1530;
+  stroke-opacity: 0.35;
+  stroke-width: 1;
+  stroke-dasharray: 2 3;
+}
+
+/* ---- field cards */
+.cardLabel {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 6px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  fill: #0b1530;
+  opacity: 0.55;
+}
+.cardValue,
+.cardValueReview {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  fill: #0b1530;
+}
+.cardValueReview {
+  fill: #c2530f;
+}
+.cardConf {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 6.5px;
+  font-weight: 600;
+  fill: #fff;
+}
+
+/* ---- screen-aligned tags */
+.tagWrap {
+  display: flex;
+  height: 30px;
+  align-items: flex-end;
+  justify-content: center;
+}
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  white-space: nowrap;
+  border-radius: 999px;
+  padding: 0.28rem 0.7rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: #fff;
+  background: #0b1530;
+  box-shadow: 0 6px 18px -8px rgba(11, 21, 48, 0.55);
+}
+.tag[data-tone="orange"] {
+  background: #ec6a1f;
+}
+.tag[data-tone="blue"] {
+  background: #2152e8;
+}
+
+.halo {
+  animation: dx-halo 1.1s linear infinite;
+}
+@keyframes dx-halo {
+  to {
+    stroke-dashoffset: -22;
+  }
+}
+.ring {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: dx-ring 1.4s var(--dx-ease, ease-out) infinite;
+}
+@keyframes dx-ring {
+  0% {
+    transform: scale(0.7);
+  }
+  100% {
+    transform: scale(1.15);
+  }
+}
+
+/* ---- steps */
+.steps {
+  margin: 1.75rem auto 0;
+  display: grid;
+  max-width: 88rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+  list-style: none;
+  padding: 0;
+}
+@media (min-width: 900px) {
+  .steps {
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+  }
+}
+
+.step {
+  position: relative;
+  display: flex;
+  width: 100%;
+  height: 100%;
+  flex-direction: column;
+  gap: 0.2rem;
+  overflow: hidden;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  padding: 0.85rem 0.9rem 1rem;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color 300ms var(--dx-ease, ease),
+    border-color 300ms var(--dx-ease, ease),
+    transform 300ms var(--dx-spring, ease);
+}
+.step:hover {
+  background: var(--surface, #fff);
+  border-color: var(--border);
+}
+.step:active {
+  transform: scale(0.98);
+}
+.step[data-active] {
+  background: var(--surface, #fff);
+  border-color: var(--border-strong, var(--border));
+  box-shadow: 0 10px 30px -18px rgba(11, 21, 48, 0.35);
+}
+
+.stepN {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  color: var(--muted-foreground, #6b6a64);
+}
+.step[data-active] .stepN {
+  color: var(--dx-accent);
+}
+.stepTitle {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--foreground);
+}
+.stepBody {
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: var(--muted-foreground, #6b6a64);
+}
+.stepBar {
+  position: absolute;
+  left: 0.9rem;
+  right: 0.9rem;
+  bottom: 0.45rem;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--border);
+  overflow: hidden;
+}
+.stepBar::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--dx-accent);
+  transform: scaleX(0);
+  transform-origin: left;
+}
+.step[data-done] .stepBar::after {
+  transform: scaleX(1);
+  background: color-mix(in srgb, var(--dx-ink) 35%, transparent);
+}
+.step[data-active] .stepBar::after {
+  animation: dx-stepfill 1.6s var(--dx-ease, ease-out) forwards;
+}
+@keyframes dx-stepfill {
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .track,
+  .intake,
+  .halo,
+  .ring,
+  .step[data-active] .stepBar::after {
+    animation: none;
+  }
+  .step[data-active] .stepBar::after {
+    transform: scaleX(1);
+  }
+}
+
+/* ---- dark theme: keep the floor objects legible */
+.person,
+.stand {
+  fill: #0b1530;
+}
+:global(:root[data-theme="dark"]) .person,
+:global(:root[data-theme="dark"]) .stand {
+  fill: #e9e6dc;
+}
+:global(:root[data-theme="dark"]) .trackBase {
+  stroke: var(--background);
+  stroke-opacity: 0.9;
+}
+:global(:root[data-theme="dark"]) .track {
+  stroke: #e9e6dc;
+  stroke-opacity: 0.5;
+}
+:global(:root[data-theme="dark"]) .tag[data-tone="ink"] {
+  background: #2a3550;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+
+/* Phones: keep the scene legible and let it pan sideways. */
+@media (max-width: 760px) {
+  .band {
+    padding-inline: 0;
+  }
+  .head,
+  .steps {
+    padding-inline: 1.25rem;
+  }
+  .stageWrap {
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .stageWrap::-webkit-scrollbar {
+    display: none;
+  }
+  .svg {
+    width: 820px;
+    max-width: none;
+  }
+}
+
+/* ---- brand icons on the stage blocks */
+.iconPad {
+  fill: #ffffff;
+  stroke: rgba(29, 99, 209, 0.22);
+  stroke-width: 1;
+}
+.faceNum {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 7.5px;
+  letter-spacing: 0.12em;
+  fill: #fff;
+  opacity: 0.75;
+}
+.faceName {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  fill: #fff;
+}
+
+/* ---- step icons */
+.stepTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.35rem;
+}
+.stepIcon {
+  display: inline-flex;
+  height: 2.5rem;
+  width: 2.5rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.75rem;
+  color: #0b2a5b;
+  background: linear-gradient(160deg, #eef5ff, #fff6ec);
+  box-shadow: inset 0 0 0 1px #dbe7fb;
+  transition: transform 300ms var(--dx-spring, ease);
+}
+.step[data-active] .stepIcon {
+  transform: translateY(-2px) scale(1.06);
+}
+
+/* ---- stage icons (no blocks) */
+.pad {
+  fill: color-mix(in srgb, var(--dx-blue) 7%, transparent);
+  stroke: color-mix(in srgb, var(--dx-blue) 35%, transparent);
+  stroke-width: 1;
+  stroke-dasharray: 3 4;
+}
+.padShadow {
+  fill: #0b1530;
+  opacity: 0.1;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: dx-shadow 3.6s var(--dx-ease-io, ease-in-out) infinite;
+}
+.stem {
+  stroke: color-mix(in srgb, var(--dx-blue) 40%, transparent);
+  stroke-width: 1;
+  stroke-dasharray: 2 4;
+}
+.float {
+  animation: dx-float 3.6s var(--dx-ease-io, ease-in-out) infinite;
+}
+.iconLift {
+  filter: drop-shadow(0 10px 14px rgba(11, 21, 48, 0.18));
+}
+.tileNum {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  fill: var(--dx-accent);
+}
+.tileName {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  fill: var(--foreground);
+}
+@keyframes dx-float {
+  50% {
+    transform: translateY(-6px);
+  }
+}
+@keyframes dx-shadow {
+  50% {
+    transform: scale(0.85);
+    opacity: 0.06;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .float,
+  .padShadow {
+    animation: none;
+  }
+}
+
+/* ---- DataoMatix hub */
+.hubPad {
+  fill: color-mix(in srgb, var(--dx-accent) 6%, transparent);
+  stroke: color-mix(in srgb, var(--dx-accent) 45%, transparent);
+  stroke-width: 1.2;
+  stroke-dasharray: 4 4;
+}
+.hubRing {
+  fill: none;
+  stroke: color-mix(in srgb, var(--dx-blue) 40%, transparent);
+  stroke-width: 1;
+  animation: dx-track 2.4s linear infinite;
+  stroke-dasharray: 2 5;
+}
+.hubWordLight,
+.hubWordDark {
+  filter: drop-shadow(0 10px 14px rgba(11, 21, 48, 0.16));
+}
+.hubWordDark {
+  display: none;
+}
+:global(:root[data-theme="dark"]) .hubWordLight {
+  display: none;
+}
+:global(:root[data-theme="dark"]) .hubWordDark {
+  display: inline;
+}
