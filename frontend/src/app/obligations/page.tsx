@@ -6,7 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 
 import ContentSection from "@/components/layout/ContentSection";
-import PageHero from "@/components/layout/PageHero";
+import ConsoleHeader from "@/components/layout/ConsoleHeader";
 import EmptyState from "@/components/ui/empty-state";
 import { ErrorState, LoadingState } from "@/components/layout/StatusState";
 import ObligationCalendar from "@/components/obligations/obligation-calendar";
@@ -51,19 +51,18 @@ const SELECT = "rounded-lg border border-border bg-surface px-2 py-1 text-xs tex
 
 export default function ObligationsPage() {
   return (
-    <>
-      <PageHero
-        compact
-        eyebrow="Compliance & Controls"
+    <div className="workspace-page w-full">
+      <ConsoleHeader
+        icon={CalendarCheck}
         title="Obligations tracker"
-        description="Deliverables, reports, notices, options and compliance duties found in your contracts' schedules, clauses and text — each with the page it came from."
+        description="Deliverables, reports, notices, options and compliance duties found in your contracts — each with the page it came from."
       />
       <ContentSection>
         <Suspense>
           <ObligationsBody />
         </Suspense>
       </ContentSection>
-    </>
+    </div>
   );
 }
 

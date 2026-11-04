@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Settings2, Trash2 } from "lucide-react";
 
 import ContentSection from "@/components/layout/ContentSection";
-import PageHero from "@/components/layout/PageHero";
-import EmptyState from "@/components/illustrations/empty-state";
+import ConsoleHeader from "@/components/layout/ConsoleHeader";
+import EmptyState from "@/components/ui/empty-state";
 import { LoadingState } from "@/components/layout/StatusState";
 import {
   DOCUMENT_FAMILY_LABELS,
@@ -129,20 +129,16 @@ export default function ExtractionModelsPage() {
   }
 
   return (
-    <>
-      <PageHero
-        compact
-        eyebrow="Settings"
-        title="Extraction Models"
+    <div className="workspace-page w-full">
+      <ConsoleHeader
+        icon={Settings2}
+        title="Extraction models"
         description="Define reusable field templates for document extraction runs."
       />
 
       <ContentSection>
-
-      <div className="rounded-2xl border border-border bg-surface p-6 shadow-sm">
-        <p className="text-sm font-semibold text-foreground">
-          + New Model
-        </p>
+      <div className="data-panel p-5">
+        <p className="text-sm font-semibold text-foreground">New model</p>
 
         <div className="mt-3 grid gap-3 sm:grid-cols-[1fr_2fr_auto]">
           <input
@@ -152,7 +148,7 @@ export default function ExtractionModelsPage() {
             onChange={(event) =>
               setNewModelName(event.target.value)
             }
-            className="rounded-lg border border-border px-3 py-2 text-sm"
+            className="control"
           />
           <input
             type="text"
@@ -161,7 +157,7 @@ export default function ExtractionModelsPage() {
             onChange={(event) =>
               setNewModelDescription(event.target.value)
             }
-            className="rounded-lg border border-border px-3 py-2 text-sm"
+            className="control"
           />
           <button
             type="button"
@@ -223,7 +219,7 @@ export default function ExtractionModelsPage() {
 
         {!loading && models.length === 0 && (
           <EmptyState
-            variant="fields"
+            icon={Settings2}
             title="No extraction models configured"
             description="Define custom target field groups and schemas to tailor extraction to your organization's contracts."
           />
@@ -239,7 +235,7 @@ export default function ExtractionModelsPage() {
         ))}
       </div>
       </ContentSection>
-    </>
+    </div>
   );
 }
 

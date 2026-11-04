@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { FileSearch, ShieldCheck } from "lucide-react";
 
 import ContentSection from "@/components/layout/ContentSection";
-import PageHero from "@/components/layout/PageHero";
+import ConsoleHeader from "@/components/layout/ConsoleHeader";
 import EmptyState from "@/components/ui/empty-state";
 import { DeviationCounts, PlaybookFindingList } from "@/components/playbook/playbook-findings";
 import ClauseLibrary from "@/components/playbook/clause-library";
@@ -53,12 +53,11 @@ export default function PlaybookPage() {
   }
 
   return (
-    <>
-      <PageHero
-        compact
-        eyebrow="Compliance & Controls"
-        title="Clause Playbook & Compliance Rules"
-        description="Your clause library: which FAR and DFARS clauses every contract should carry, must not carry, or needs a closer look when present, with verbatim regulation text from ingested sources, your fallback language and extraction rules — plus validation rules, all checked against what each document actually says."
+    <div className="workspace-page w-full">
+      <ConsoleHeader
+        icon={ShieldCheck}
+        title="Clause playbook"
+        description="FAR and DFARS clauses every contract should carry, must not carry, or needs a closer look — with validation rules checked against what each document says."
       />
       <ContentSection>
         {error ? (
@@ -94,7 +93,7 @@ export default function PlaybookPage() {
           </div>
         )}
       </ContentSection>
-    </>
+    </div>
   );
 }
 

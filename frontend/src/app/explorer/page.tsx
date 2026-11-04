@@ -3,13 +3,13 @@
 import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { ChevronRight, Loader2, Search } from "lucide-react";
+import { ChevronRight, Loader2, Search, TextSearch } from "lucide-react";
 
 import ContentSection from "@/components/layout/ContentSection";
-import PageHero from "@/components/layout/PageHero";
+import ConsoleHeader from "@/components/layout/ConsoleHeader";
 import { ErrorState, LoadingState } from "@/components/layout/StatusState";
 import ConfidenceIndicator from "@/components/confidence-indicator";
-import EmptyState from "@/components/illustrations/empty-state";
+import EmptyState from "@/components/ui/empty-state";
 import {
   aggregateFieldAcrossRepository,
   filterMatchesByValue,
@@ -94,20 +94,19 @@ function ExplorerContent() {
   const maxCount = aggregation?.buckets[0]?.count ?? 1;
 
   return (
-    <>
-      <PageHero
-        compact
-        eyebrow="Intelligence & AI"
-        title="Field Explorer"
+    <div className="workspace-page w-full">
+      <ConsoleHeader
+        icon={TextSearch}
+        title="Field explorer"
         description="Compare any extracted field across contracts, financial reports and other documents, with confidence and source links."
       />
 
       <ContentSection>
-        <div className="sticky top-0 z-10 -mx-4 bg-background px-4 pb-2 pt-2 sm:-mx-6 sm:px-6">
-        <div className="editorial-card p-5 sm:p-6">
-          <div className="flex flex-wrap items-end gap-4">
+        <div className="sticky top-0 z-10 -mx-4 bg-[var(--color-page)] px-4 pb-2 pt-1 sm:-mx-6 sm:px-6">
+        <div className="data-panel p-4 sm:p-5">
+          <div className="flex flex-wrap items-end gap-3">
             <div className="min-w-[240px] flex-1">
-              <label className="mb-2 block text-xs font-medium text-text-muted">
+              <label className="mb-1.5 block text-xs font-medium text-text-muted">
                 Search fields
               </label>
               <div className="relative">
@@ -117,7 +116,7 @@ function ExplorerContent() {
                   value={fieldQuery}
                   onChange={(event) => setFieldQuery(event.target.value)}
                   placeholder="Payment terms, invoice number, sample ID..."
-                  className="w-full rounded-xl border border-border bg-surface py-2.5 pl-10 pr-3 text-sm outline-none focus:border-primary/30 focus:ring-2 focus:ring-primary/10"
+                  className="control w-full pl-10"
                 />
               </div>
             </div>
@@ -162,7 +161,7 @@ function ExplorerContent() {
         </div>
       ) : aggregation ? (
         <div className="mt-8 grid min-w-0 gap-6 lg:grid-cols-[minmax(260px,0.38fr)_minmax(0,0.62fr)]">
-          <div className="editorial-card min-w-0 p-6">
+          <div className="data-panel min-w-0 p-5">
             <h2 className="text-lg font-medium text-foreground">
               {aggregation.field_label}
             </h2>
@@ -213,7 +212,7 @@ function ExplorerContent() {
             </div>
           </div>
 
-          <div className="editorial-card min-w-0 overflow-hidden">
+          <div className="data-panel min-w-0 overflow-hidden">
             {selectedValue ? (
               <>
                 <div className="border-b border-border px-6 py-5">
@@ -288,7 +287,7 @@ function ExplorerContent() {
               </>
             ) : (
               <EmptyState
-                variant="fields"
+                icon={TextSearch}
                 title="Select a value to explore matching documents"
                 description="Click any distribution row to open the cross-document results table."
               />
@@ -297,7 +296,7 @@ function ExplorerContent() {
         </div>
       ) : null}
       </ContentSection>
-    </>
+    </div>
   );
 }
 

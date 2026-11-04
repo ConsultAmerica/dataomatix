@@ -1,11 +1,11 @@
 "use client";
 
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, LayoutGrid } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import ContentSection from "@/components/layout/ContentSection";
-import PageHero from "@/components/layout/PageHero";
+import ConsoleHeader from "@/components/layout/ConsoleHeader";
 import { topMenu, type NavTile, type TopMenu } from "@/components/navigation/nav-config";
 import { getPortfolio, type Portfolio } from "@/lib/portfolio";
 
@@ -54,7 +54,7 @@ function Tile({ tile, metric }: { tile: NavTile; metric: string | null }) {
   return (
     <Link
       href={tile.href}
-      className="group flex items-start gap-3 rounded-xl border border-border bg-surface p-4 transition-colors hover:border-primary/40"
+      className="group data-panel flex items-start gap-3 p-4 transition-colors hover:border-primary/40"
     >
       <span className="file-icon-wrap h-9 w-9 shrink-0">
         <tile.icon className="h-4.5 w-4.5" strokeWidth={1.75} />
@@ -89,13 +89,13 @@ export default function MenuHub({ id }: { id: TopMenu["id"] }) {
   }, []);
 
   return (
-    <>
-      <PageHero compact eyebrow="Dataomatix" title={menu.label} description={menu.description} />
+    <div className="workspace-page w-full">
+      <ConsoleHeader icon={LayoutGrid} title={menu.label} description={menu.description} />
       <ContentSection>
         <div className="space-y-8">
           {menu.sections.map((section) => (
             <section key={section.title} className="space-y-3">
-              <h2 className="text-xs font-semibold uppercase tracking-[0.12em] text-text-teal">{section.title}</h2>
+              <h2 className="text-xs font-semibold uppercase tracking-[0.12em] text-text-secondary">{section.title}</h2>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {section.tiles.map((tile) => (
                   <Tile key={`${tile.href}-${tile.label}`} tile={tile} metric={portfolio ? metricFor(tile.href, portfolio) : null} />
@@ -105,6 +105,6 @@ export default function MenuHub({ id }: { id: TopMenu["id"] }) {
           ))}
         </div>
       </ContentSection>
-    </>
+    </div>
   );
 }

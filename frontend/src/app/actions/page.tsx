@@ -1,17 +1,17 @@
 "use client";
 
 import { Suspense } from "react";
+import { Zap } from "lucide-react";
 
 import ActionCatalog from "@/components/actions/action-catalog";
 import ContentSection from "@/components/layout/ContentSection";
-import PageHero from "@/components/layout/PageHero";
+import ConsoleHeader from "@/components/layout/ConsoleHeader";
 
 export default function ActionsPage() {
   return (
-    <>
-      <PageHero
-        compact
-        eyebrow="Intelligence & AI"
+    <div className="workspace-page w-full">
+      <ConsoleHeader
+        icon={Zap}
         title="Agent actions"
         description="One-click reports over a document — executive summary, risk register, clause gaps, obligations and funding — built only from extracted, source-cited data."
       />
@@ -20,6 +20,6 @@ export default function ActionsPage() {
           <ActionCatalog />
         </Suspense>
       </ContentSection>
-    </>
+    </div>
   );
 }

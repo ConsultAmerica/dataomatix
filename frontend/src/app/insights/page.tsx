@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { Lightbulb } from "lucide-react";
 
 import ContentSection from "@/components/layout/ContentSection";
-import PageHero from "@/components/layout/PageHero";
+import ConsoleHeader from "@/components/layout/ConsoleHeader";
 import {
   BarList,
   EmptyNote,
@@ -16,10 +17,9 @@ import {
 export default function InsightsPage() {
   const { portfolio, error, retry } = usePortfolio();
   return (
-    <>
-      <PageHero
-        compact
-        eyebrow="Intelligence & AI"
+    <div className="workspace-page w-full">
+      <ConsoleHeader
+        icon={Lightbulb}
         title="Contract insights"
         description="Who you contract with, which vehicles and clauses recur, and which periods of performance end soon."
       />
@@ -102,6 +102,6 @@ export default function InsightsPage() {
           }}
         </PortfolioGate>
       </ContentSection>
-    </>
+    </div>
   );
 }

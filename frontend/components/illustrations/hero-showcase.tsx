@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
 import { ArrowRight, FileSearch, Upload } from "lucide-react";
 
+import RecognitionScene from "@/components/brand/recognition-scene";
 import AgentRunMockup from "@/components/marketing/agent-run-mockup";
 
 const SLIDES = [
@@ -93,6 +94,9 @@ export default function HeroShowcase({
           </div>
         ))}
         <div className="hero-showcase-scrim" />
+        <div className="hero-recognition" aria-hidden="true">
+          <RecognitionScene />
+        </div>
       </div>
 
       <div className="hero-showcase-inner">

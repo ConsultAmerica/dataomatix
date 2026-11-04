@@ -3,11 +3,12 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Database } from "lucide-react";
 
 import OracleModeBanner from "@/components/integrations/oracle-mode-banner";
 import OracleIntegrationPanel from "@/components/oracle-integration-panel";
 import ContentSection from "@/components/layout/ContentSection";
-import PageHero from "@/components/layout/PageHero";
+import ConsoleHeader from "@/components/layout/ConsoleHeader";
 import { useDocumentChrome } from "@/components/layout/document-chrome-context";
 import { searchDocuments } from "@/lib/documents";
 import { recordRecentDocument, useRecentDocuments } from "@/lib/recent-documents";
@@ -77,15 +78,15 @@ export default function IntegrationsPage() {
   }, [appliedId]);
 
   return (
-    <div className="pb-16">
-      <PageHero
-        eyebrow="Compliance & Controls"
+    <div className="workspace-page w-full pb-16">
+      <ConsoleHeader
+        icon={Database}
         title="Exports & Oracle"
         description="Staging exports use the document workbook. Oracle preview and send use accepted/edited metadata only — never treat a preview as a delivery."
       />
 
       <ContentSection className="space-y-8">
-        <section className="rounded-xl border border-border bg-surface px-4 py-4">
+        <section className="data-panel px-4 py-4">
           <h2 className="text-sm font-semibold text-foreground">Staging exports</h2>
           <p className="mt-1 text-sm text-text-secondary">
             Open a document workspace for Export All, Export Selected (Excel /
@@ -98,7 +99,7 @@ export default function IntegrationsPage() {
           </Link>
         </section>
 
-        <section className="rounded-xl border border-border bg-surface px-4 py-4">
+        <section className="data-panel px-4 py-4">
           <h2 className="text-sm font-semibold text-foreground">Oracle document</h2>
           <p className="mt-1 text-sm text-text-secondary">
             Pick a recent document or paste a document ID you can access, or open

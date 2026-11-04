@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 
 import ContentSection from "@/components/layout/ContentSection";
-import PageHero from "@/components/layout/PageHero";
+import ConsoleHeader from "@/components/layout/ConsoleHeader";
 
 const LIFECYCLE = [
   "Upload",
@@ -79,32 +79,25 @@ function SectionHeading({
 
 export default function ArchitecturePage() {
   return (
-    <div className="space-y-10 pb-16">
-      <PageHero
-        compact
-        eyebrow="Administration"
+    <div className="workspace-page w-full space-y-0 pb-16">
+      <ConsoleHeader
+        icon={Workflow}
         title="Architecture"
-        description="Dataomatix is an enterprise contract intelligence spine: retrieve evidence, extract with explainable confidence, govern at field level, and only then export or send downstream."
+        description="Retrieve evidence, extract with explainable confidence, govern at field level, and only then export or send downstream."
         actions={
-          <div className="flex flex-wrap gap-3">
-            <Link
-              href="/extraction/new"
-              className="btn-primary inline-flex items-center gap-2"
-            >
-              Open Extraction
+          <div className="flex flex-wrap gap-2">
+            <Link href="/extraction/new" className="btn-primary inline-flex h-9 items-center gap-1.5 px-3.5 text-[13px]">
+              Open extraction
               <ArrowRight className="h-4 w-4" />
             </Link>
-            <Link
-              href="/integrations"
-              className="btn-secondary inline-flex items-center gap-2"
-            >
-              Integration Center
+            <Link href="/integrations" className="btn-secondary inline-flex h-9 items-center gap-1.5 px-3.5 text-[13px]">
+              Integration center
             </Link>
           </div>
         }
       />
 
-      <ContentSection>
+      <ContentSection className="space-y-10">
         <SectionHeading
           title="Lifecycle"
           description="The certified path from upload to controlled downstream integration."

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, History } from "lucide-react";
 
-import PageHeader from "@/components/page-header";
+import ConsoleHeader from "@/components/layout/ConsoleHeader";
 import EmptyState from "@/components/ui/empty-state";
 import { formatRelativeTime } from "@/lib/format";
 import { getGlobalAuditLog } from "@/lib/documents";
@@ -78,19 +78,21 @@ export default function ActivityPage() {
   const to = Math.min(offset + PAGE_SIZE, total);
 
   return (
-    <div className="mx-auto max-w-6xl px-6 py-8">
-      <PageHeader
+    <div className="workspace-page w-full">
+      <ConsoleHeader
+        icon={History}
         title="Activity"
         description="Recent metadata review actions in your workspace. Use Audit explorer for document, actor, action, outcome, date, and correlation filters."
       />
 
+      <div className="px-4 py-4 sm:px-6 sm:py-5">
       {error && (
         <div className="mb-4 rounded-xl border border-error/20 bg-error/5 p-3 text-sm text-error">
           {error}
         </div>
       )}
 
-      <div className="overflow-hidden rounded-xl border border-border bg-surface">
+      <div className="data-panel overflow-hidden">
         {loading && entries.length === 0 ? (
           <p className="p-12 text-center text-sm text-text-secondary">
             Loading activity...
@@ -198,6 +200,7 @@ export default function ActivityPage() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

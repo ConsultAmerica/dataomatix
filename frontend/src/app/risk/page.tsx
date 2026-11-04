@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import { FileSearch, ShieldCheck } from "lucide-react";
 
 import ContentSection from "@/components/layout/ContentSection";
-import PageHero from "@/components/layout/PageHero";
+import ConsoleHeader from "@/components/layout/ConsoleHeader";
 import EmptyState from "@/components/ui/empty-state";
 import {
   EmptyNote,
@@ -23,10 +23,9 @@ const PAGE_SIZE = 25;
 export default function RiskPage() {
   const { portfolio, error, retry } = usePortfolio();
   return (
-    <>
-      <PageHero
-        compact
-        eyebrow="Administration"
+    <div className="workspace-page w-full">
+      <ConsoleHeader
+        icon={ShieldCheck}
         title="Risk register"
         description="Documents that need attention: failed processing, periods of performance ending, unreviewed low-confidence values, missing contract numbers and duplicates."
       />
@@ -49,7 +48,7 @@ export default function RiskPage() {
           )}
         </PortfolioGate>
       </ContentSection>
-    </>
+    </div>
   );
 }
 
