@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import ContentSection from "@/components/layout/ContentSection";
-import PageHero from "@/components/layout/PageHero";
+import ConsoleHeader from "@/components/layout/ConsoleHeader";
 import { ErrorState, LoadingState } from "@/components/layout/StatusState";
 import EmptyState from "@/components/ui/empty-state";
 import {
@@ -74,36 +74,25 @@ export default function ExpirationsPage() {
   }, [rows, filter]);
 
   return (
-    <>
-      <PageHero
-        compact
-        eyebrow="Compliance & Controls"
+    <div className="workspace-page w-full">
+      <ConsoleHeader
+        icon={CalendarClock}
         title="Expirations"
-        description="Passports, visas, IDs, certificates, policies and contracts — every expiry, validity or period end a document states, found automatically, with the page it came from."
+        description="Passports, visas, IDs, certificates, policies and contracts — every expiry or period end a document states, with the page it came from."
+        tabs={FILTERS.map((item) => {
+          const count =
+            item.id === "attention" ? counts.expired + counts.expiring : counts[item.id as keyof typeof counts];
+          return {
+            id: item.id,
+            label: item.label,
+            count: rows ? count : undefined,
+            active: filter === item.id,
+            onSelect: () => setFilter(item.id),
+          };
+        })}
+        tabsLabel="Expiration filters"
       />
       <ContentSection>
-        <div className="mb-3 flex flex-wrap items-center gap-2" role="tablist" aria-label="Filter">
-          {FILTERS.map((item) => {
-            const count =
-              item.id === "attention" ? counts.expired + counts.expiring : counts[item.id as keyof typeof counts];
-            return (
-              <button
-                key={item.id}
-                type="button"
-                role="tab"
-                aria-selected={filter === item.id}
-                onClick={() => setFilter(item.id)}
-                className={`rounded-full border px-3 py-1 text-xs font-medium ${
-                  filter === item.id ? "border-primary bg-primary-soft text-primary" : "border-border bg-surface text-text-secondary"
-                }`}
-              >
-                {item.label}
-                <span className="ml-1 text-text-muted">{rows ? count : ""}</span>
-              </button>
-            );
-          })}
-        </div>
-
         {error ? (
           <ErrorState error={error} onRetry={load} />
         ) : rows === null ? (
@@ -115,54 +104,56 @@ export default function ExpirationsPage() {
             description="Dates are detected when a document is processed: machine-readable zones, contract schedules and labelled dates such as “Expiration Date” or “Valid until”."
           />
         ) : (
-          <div className="overflow-x-auto rounded-xl border border-border bg-surface">
-            <table className="min-w-full text-left text-sm" data-testid="expirations-table">
-              <thead className="bg-surface-soft text-xs uppercase tracking-wide text-text-muted">
-                <tr>
-                  <th className="px-3 py-2 font-medium">Document</th>
-                  <th className="px-3 py-2 font-medium">What</th>
-                  <th className="px-3 py-2 font-medium">Date</th>
-                  <th className="px-3 py-2 font-medium">Status</th>
-                  <th className="px-3 py-2 font-medium">Found in</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {visible.map((row) => (
-                  <tr key={`${row.document_id}-${row.kind}-${row.date}`}>
-                    <td className="px-3 py-2">
-                      <Link href={`/documents/${row.document_id}`} className="font-medium text-foreground hover:text-primary">
-                        {row.document_name || row.document_id}
-                      </Link>
-                    </td>
-                    <td className="px-3 py-2 text-text-secondary">
-                      <span className="text-foreground">{KIND_LABELS[row.kind] ?? row.kind}</span>
-                      <span className="block text-xs">{row.label}</span>
-                    </td>
-                    <td className="whitespace-nowrap px-3 py-2 text-foreground">
-                      {keyDateText(row)}
-                      {row.ambiguous && row.interpretations?.length ? (
-                        <span className="block text-xs text-warning">Could be {row.interpretations.map(formatKeyDate).join(" or ")}</span>
-                      ) : null}
-                    </td>
-                    <td className="whitespace-nowrap px-3 py-2">
-                      <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_STYLE[row.status]}`}>
-                        {STATUS_LABEL[row.status]}
-                      </span>
-                      {!row.ambiguous && <span className="ml-2 text-xs text-text-secondary">{relativeLabel(row)}</span>}
-                    </td>
-                    <td className="px-3 py-2 text-xs">
-                      <Link href={evidenceHref(row)} className="text-primary hover:underline">
-                        {SOURCE_LABELS[row.source] ?? row.source}
-                        {row.page ? `, page ${row.page}` : ""}
-                      </Link>
-                    </td>
+          <div className="data-panel overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-left text-sm" data-testid="expirations-table">
+                <thead className="bg-surface-soft text-[11px] uppercase tracking-wide text-text-muted">
+                  <tr>
+                    <th className="px-3 py-2.5 font-semibold">Document</th>
+                    <th className="px-3 py-2.5 font-semibold">What</th>
+                    <th className="px-3 py-2.5 font-semibold">Date</th>
+                    <th className="px-3 py-2.5 font-semibold">Status</th>
+                    <th className="px-3 py-2.5 font-semibold">Found in</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {visible.map((row) => (
+                    <tr key={`${row.document_id}-${row.kind}-${row.date}`} className="hover:bg-surface-soft/60">
+                      <td className="px-3 py-2.5">
+                        <Link href={`/documents/${row.document_id}`} className="font-medium text-foreground hover:text-primary">
+                          {row.document_name || row.document_id}
+                        </Link>
+                      </td>
+                      <td className="px-3 py-2.5 text-text-secondary">
+                        <span className="text-foreground">{KIND_LABELS[row.kind] ?? row.kind}</span>
+                        <span className="block text-xs">{row.label}</span>
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-2.5 text-foreground">
+                        {keyDateText(row)}
+                        {row.ambiguous && row.interpretations?.length ? (
+                          <span className="block text-xs text-warning">Could be {row.interpretations.map(formatKeyDate).join(" or ")}</span>
+                        ) : null}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-2.5">
+                        <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_STYLE[row.status]}`}>
+                          {STATUS_LABEL[row.status]}
+                        </span>
+                        {!row.ambiguous && <span className="ml-2 text-xs text-text-secondary">{relativeLabel(row)}</span>}
+                      </td>
+                      <td className="px-3 py-2.5 text-xs">
+                        <Link href={evidenceHref(row)} className="text-primary hover:underline">
+                          {SOURCE_LABELS[row.source] ?? row.source}
+                          {row.page ? `, page ${row.page}` : ""}
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </ContentSection>
-    </>
+    </div>
   );
 }

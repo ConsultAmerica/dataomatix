@@ -11,6 +11,7 @@ import {
   ReportIcon,
   TransformIcon,
 } from "@/components/brand/capability-icons";
+import RecognitionScene from "@/components/brand/recognition-scene";
 
 type Capability = {
   title: string;
@@ -68,6 +69,9 @@ export default function CapabilityBand() {
           <h2 id="capabilities-title" className="mt-2 text-balance text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
             From a stack of pages to data you can trust
           </h2>
+        </div>
+        <div className="capability-recognition mx-auto mt-8 hidden max-w-md sm:block" aria-hidden="true">
+          <RecognitionScene />
         </div>
         <ol className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
           {CAPABILITIES.map((capability, index) => {

@@ -47,7 +47,8 @@ export default function DocumentCapabilityShell({
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-[var(--color-page)]" data-testid={`capability-page-${active}`}>
-      <div className="border-b border-border bg-surface px-4 pt-3 sm:px-6">
+      <div className="capability-shell-header relative border-b border-border bg-surface px-4 pt-3 sm:px-6">
+        <div className="capability-shell-scan" aria-hidden="true" />
         <div className="flex flex-wrap items-center justify-between gap-3 pb-3">
           <h1 className="flex min-w-0 items-center gap-2 text-base font-semibold text-foreground">
             <FileText className="h-4 w-4 shrink-0 text-[#1565d8]" aria-hidden="true" />

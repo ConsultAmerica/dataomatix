@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { GitBranch, List, Loader2 } from "lucide-react";
+import { GitBranch } from "lucide-react";
 
 import ContractHierarchy from "@/components/contract-hierarchy";
 import DocumentResultsTable from "@/components/document-results-table";
-import EmptyState from "@/components/illustrations/empty-state";
+import ConsoleHeader from "@/components/layout/ConsoleHeader";
+import EmptyState from "@/components/ui/empty-state";
 import { LoadingState } from "@/components/layout/StatusState";
-import PageHeader from "@/components/page-header";
 import { getDocumentHierarchy, searchDocuments } from "@/lib/documents";
 import type { DocumentSummary, HierarchyNode } from "@/types/document";
 
@@ -55,69 +55,54 @@ export default function RelationshipsPage() {
   const relatedCount = documents.length;
 
   return (
-    <div className="mx-auto max-w-6xl px-6 py-8">
-      <PageHeader
-        title="Contract Relationships"
+    <div className="workspace-page w-full">
+      <ConsoleHeader
+        icon={GitBranch}
+        title="Contract relationships"
         description="Explore parent-child contract hierarchies and related documents."
+        tabs={[
+          {
+            id: "tree",
+            label: "Tree",
+            active: view === "tree",
+            onSelect: () => setView("tree"),
+          },
+          {
+            id: "table",
+            label: "Table",
+            count: relatedCount,
+            active: view === "table",
+            onSelect: () => setView("table"),
+          },
+        ]}
+        tabsLabel="Relationship views"
       />
 
-      <div className="mb-4 flex items-center justify-between">
-        <p className="text-sm text-text-secondary">
-          {relatedCount} documents with detected relationships
-        </p>
-        <div className="flex items-center gap-1 rounded-lg border border-border bg-surface p-1">
-          <button
-            type="button"
-            onClick={() => setView("tree")}
-            className={[
-              "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition",
-              view === "tree"
-                ? "bg-brand-blue text-white"
-                : "text-text-secondary hover:bg-background",
-            ].join(" ")}
-          >
-            <GitBranch className="h-3.5 w-3.5" />
-            Tree
-          </button>
-          <button
-            type="button"
-            onClick={() => setView("table")}
-            className={[
-              "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition",
-              view === "table"
-                ? "bg-brand-blue text-white"
-                : "text-text-secondary hover:bg-background",
-            ].join(" ")}
-          >
-            <List className="h-3.5 w-3.5" />
-            Table
-          </button>
-        </div>
-      </div>
-
-      <div className="overflow-hidden rounded-xl border border-border bg-surface">
-        {loading ? (
-          <LoadingState
-            title="Detecting document relationships..."
-            description="Analyzing parent-child contracts, SOWs, task orders, and amendment lineages."
-          />
-        ) : view === "tree" ? (
-          roots.length > 0 ? (
-            <ContractHierarchy roots={roots} />
-          ) : (
-            <EmptyState
-              variant="relationships"
-              title="No document relationships detected"
-              description="Upload master agreements and related amendments to view contract trees and dependencies."
+      <div className="px-4 py-4 sm:px-6 sm:py-5">
+        <div className="data-panel overflow-hidden">
+          {loading ? (
+            <LoadingState
+              title="Detecting document relationships..."
+              description="Analyzing parent-child contracts, SOWs, task orders, and amendment lineages."
             />
-          )
-        ) : (
-          <DocumentResultsTable
-            documents={documents}
-            emptyMessage="No related documents found."
-            showExtendedColumns
-          />
-        )}
+          ) : view === "tree" ? (
+            roots.length > 0 ? (
+              <ContractHierarchy roots={roots} />
+            ) : (
+              <EmptyState
+                icon={GitBranch}
+                title="No document relationships detected"
+                description="Upload master agreements and related amendments to view contract trees and dependencies."
+              />
+            )
+          ) : (
+            <DocumentResultsTable
+              documents={documents}
+              emptyMessage="No related documents found."
+              showExtendedColumns
+            />
+          )}
+        </div>
       </div>
     </div>
   );

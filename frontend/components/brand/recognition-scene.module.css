@@ -1,0 +1,512 @@
+/* Document intelligence recognition scene — purposeful motion only.
+   Brand: navy / sky / orange on dark PageHero or light marketing panels. */
+
+.scene {
+  --rs-blue: #2f86f0;
+  --rs-navy: #0b2a5b;
+  --rs-orange: #f7931e;
+  --rs-paper: rgba(255, 255, 255, 0.92);
+  --rs-ink: rgba(11, 42, 91, 0.55);
+  --rs-glow: rgba(47, 134, 240, 0.35);
+
+  position: relative;
+  width: 100%;
+  max-width: 22rem;
+  aspect-ratio: 1.05 / 1;
+  margin: 0 auto;
+  pointer-events: none;
+  isolation: isolate;
+}
+
+.grid {
+  position: absolute;
+  inset: 8% 4% 4%;
+  border-radius: 1.25rem;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+  background-size: 22px 22px;
+  mask-image: radial-gradient(ellipse 70% 65% at 50% 48%, #000 35%, transparent 75%);
+  opacity: 0.7;
+  animation: gridPulse 8s ease-in-out infinite alternate;
+}
+
+.chip {
+  position: absolute;
+  z-index: 2;
+  padding: 0.2rem 0.45rem;
+  border-radius: 0.4rem;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #fff;
+  box-shadow: 0 6px 16px rgba(7, 19, 38, 0.28);
+  animation: floatIn 5.5s ease-in-out infinite;
+}
+
+.formatPdf {
+  top: 10%;
+  left: 6%;
+  background: linear-gradient(135deg, #f26b0a, #f7931e);
+  animation-delay: 0s;
+}
+
+.formatDoc {
+  top: 22%;
+  left: 2%;
+  background: linear-gradient(135deg, #1d63d1, #2f86f0);
+  animation-delay: 0.6s;
+}
+
+.formatImg {
+  top: 34%;
+  left: 8%;
+  background: linear-gradient(135deg, #0b2a5b, #1d4e89);
+  animation-delay: 1.2s;
+}
+
+.stack {
+  position: absolute;
+  left: 18%;
+  top: 18%;
+  width: 42%;
+  height: 58%;
+  z-index: 3;
+}
+
+.page {
+  position: absolute;
+  inset: 0;
+  border-radius: 0.55rem;
+  background: var(--rs-paper);
+  border: 1px solid rgba(47, 134, 240, 0.35);
+  box-shadow: 0 14px 28px rgba(7, 19, 38, 0.28);
+}
+
+.pageFar {
+  transform: translate(10px, -12px) rotate(-4deg);
+  opacity: 0.45;
+  animation: pageDrift 7s ease-in-out infinite alternate;
+}
+
+.pageMid {
+  transform: translate(5px, -6px) rotate(-2deg);
+  opacity: 0.7;
+  animation: pageDrift 7s ease-in-out 0.4s infinite alternate-reverse;
+}
+
+.pageFront {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 12% 12% 14%;
+  overflow: hidden;
+  animation: pageBreathe 6s ease-in-out infinite;
+}
+
+.line {
+  display: block;
+  height: 0.28rem;
+  border-radius: 999px;
+  background: var(--rs-ink);
+  opacity: 0.45;
+}
+
+.zone {
+  display: block;
+  border-radius: 0.3rem;
+  border: 1px solid transparent;
+  animation: zoneGlow 3.6s ease-in-out infinite;
+}
+
+.zoneA {
+  height: 1.05rem;
+  width: 72%;
+  margin-top: 0.35rem;
+  background: rgba(47, 134, 240, 0.14);
+  border-color: rgba(47, 134, 240, 0.55);
+  animation-delay: 0.2s;
+}
+
+.zoneB {
+  height: 0.95rem;
+  width: 58%;
+  background: rgba(247, 147, 30, 0.14);
+  border-color: rgba(247, 147, 30, 0.55);
+  animation-delay: 0.7s;
+}
+
+.zoneC {
+  height: 1.15rem;
+  width: 80%;
+  background: rgba(31, 138, 76, 0.12);
+  border-color: rgba(31, 138, 76, 0.5);
+  animation-delay: 1.2s;
+}
+
+.scanBeam {
+  position: absolute;
+  left: 6%;
+  right: 6%;
+  height: 18%;
+  top: 8%;
+  border-radius: 0.35rem;
+  background: linear-gradient(
+    180deg,
+    transparent,
+    rgba(47, 134, 240, 0.45),
+    transparent
+  );
+  box-shadow: 0 0 18px var(--rs-glow);
+  animation: scanSweep 3.4s ease-in-out infinite;
+}
+
+.sensor {
+  position: absolute;
+  right: 18%;
+  top: 6%;
+  width: 28%;
+  z-index: 5;
+  animation: sensorFloat 4.8s ease-in-out infinite;
+}
+
+.sensorSvg {
+  display: block;
+  width: 100%;
+  height: auto;
+  filter: drop-shadow(0 8px 16px rgba(7, 19, 38, 0.35));
+}
+
+.sensorBox {
+  fill: rgba(255, 255, 255, 0.95);
+  stroke: var(--rs-blue);
+  stroke-width: 2.2;
+}
+
+.sensorCross {
+  stroke: var(--rs-orange);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+}
+
+.sensorRay {
+  stroke: var(--rs-blue);
+  stroke-width: 1.5;
+  stroke-dasharray: 3 2.5;
+  stroke-linecap: round;
+  opacity: 0.75;
+  animation: rayPulse 3.4s ease-in-out infinite;
+}
+
+.label {
+  position: absolute;
+  z-index: 6;
+  padding: 0.22rem 0.5rem;
+  border-radius: 0.4rem;
+  font-size: 0.58rem;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  color: var(--rs-navy);
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid rgba(47, 134, 240, 0.28);
+  box-shadow: 0 8px 18px rgba(7, 19, 38, 0.22);
+  white-space: nowrap;
+  animation: labelPop 4.2s ease-in-out infinite;
+}
+
+.labelContract {
+  left: 8%;
+  top: 48%;
+  animation-delay: 0.15s;
+}
+
+.labelDate {
+  left: 34%;
+  top: 62%;
+  animation-delay: 0.55s;
+  border-color: rgba(247, 147, 30, 0.4);
+}
+
+.labelValue {
+  left: 12%;
+  top: 74%;
+  animation-delay: 0.95s;
+  border-color: rgba(31, 138, 76, 0.4);
+}
+
+.labelTable {
+  right: 8%;
+  top: 42%;
+  animation-delay: 1.25s;
+}
+
+.labelClause {
+  right: 14%;
+  top: 56%;
+  animation-delay: 1.55s;
+}
+
+.result {
+  position: absolute;
+  right: 2%;
+  bottom: 6%;
+  z-index: 7;
+  width: 42%;
+  padding: 0.55rem 0.65rem;
+  border-radius: 0.7rem;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(47, 134, 240, 0.28);
+  box-shadow: 0 12px 28px rgba(7, 19, 38, 0.3);
+  display: flex;
+  flex-direction: column;
+  gap: 0.28rem;
+  animation: resultSlide 5.5s ease-in-out infinite;
+}
+
+.resultTitle {
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(11, 42, 91, 0.55);
+}
+
+.resultRow {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: var(--rs-navy);
+  font-variant-numeric: tabular-nums;
+}
+
+.check {
+  display: inline-block;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 999px;
+  background: #1f8a4c;
+  box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.35);
+  flex-shrink: 0;
+  animation: checkPop 5.5s ease-in-out infinite;
+}
+
+.resultRow:nth-child(3) .check {
+  animation-delay: 0.25s;
+}
+.resultRow:nth-child(4) .check {
+  animation-delay: 0.5s;
+}
+
+/* —— Keyframes —— */
+
+@keyframes gridPulse {
+  from {
+    opacity: 0.45;
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    opacity: 0.8;
+    transform: translate3d(0, -2%, 0);
+  }
+}
+
+@keyframes floatIn {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+    opacity: 0.85;
+  }
+  50% {
+    transform: translate3d(6px, -8px, 0);
+    opacity: 1;
+  }
+}
+
+@keyframes pageDrift {
+  from {
+    transform: translate(10px, -12px) rotate(-4deg);
+  }
+  to {
+    transform: translate(14px, -16px) rotate(-5deg);
+  }
+}
+
+@keyframes pageBreathe {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, -3px, 0);
+  }
+}
+
+@keyframes zoneGlow {
+  0%,
+  30% {
+    opacity: 0.35;
+    box-shadow: none;
+  }
+  50%,
+  75% {
+    opacity: 1;
+    box-shadow: 0 0 12px var(--rs-glow);
+  }
+  100% {
+    opacity: 0.45;
+  }
+}
+
+@keyframes scanSweep {
+  0%,
+  8% {
+    top: 8%;
+    opacity: 0;
+  }
+  18% {
+    opacity: 1;
+  }
+  78% {
+    top: 72%;
+    opacity: 1;
+  }
+  90%,
+  100% {
+    top: 78%;
+    opacity: 0;
+  }
+}
+
+@keyframes sensorFloat {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, -7px, 0);
+  }
+}
+
+@keyframes rayPulse {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  45% {
+    opacity: 0.95;
+  }
+}
+
+@keyframes labelPop {
+  0%,
+  18% {
+    opacity: 0;
+    transform: translate3d(0, 6px, 0) scale(0.92);
+  }
+  32%,
+  78% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  100% {
+    opacity: 0.35;
+    transform: translate3d(0, -2px, 0) scale(1);
+  }
+}
+
+@keyframes resultSlide {
+  0%,
+  12% {
+    opacity: 0;
+    transform: translate3d(12px, 8px, 0);
+  }
+  28%,
+  82% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    opacity: 0.55;
+    transform: translate3d(0, -2px, 0);
+  }
+}
+
+@keyframes checkPop {
+  0%,
+  25% {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+  40%,
+  85% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0.7;
+  }
+}
+
+/* Compact heroes: trim secondary chips */
+.compact .formatImg,
+.compact .labelTable,
+.compact .labelClause {
+  display: none;
+}
+
+.compact {
+  max-width: 16rem;
+}
+
+.compact .result {
+  width: 46%;
+  padding: 0.4rem 0.5rem;
+}
+
+.compact .label {
+  font-size: 0.52rem;
+  padding: 0.15rem 0.38rem;
+}
+
+@media (max-width: 639px) {
+  .formatDoc,
+  .formatImg,
+  .labelTable,
+  .labelClause {
+    display: none;
+  }
+
+  .scene {
+    max-width: 15.5rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .grid,
+  .chip,
+  .pageFar,
+  .pageMid,
+  .pageFront,
+  .zone,
+  .scanBeam,
+  .sensor,
+  .sensorRay,
+  .label,
+  .result,
+  .check {
+    animation: none !important;
+  }
+
+  .scanBeam {
+    opacity: 0;
+  }
+
+  .label,
+  .result,
+  .chip {
+    opacity: 0.9;
+  }
+}

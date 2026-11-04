@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Loader2, RefreshCw } from "lucide-react";
+import { Activity, Loader2, RefreshCw } from "lucide-react";
 
 import ContentSection from "@/components/layout/ContentSection";
-import PageHero from "@/components/layout/PageHero";
+import ConsoleHeader from "@/components/layout/ConsoleHeader";
 import { getCurrentActor } from "@/lib/auth";
 import {
   getDashboardStats,
@@ -218,25 +218,15 @@ export default function GovernanceOpsDashboard() {
   } as const;
 
   return (
-    <>
-      <PageHero
-        compact
-        eyebrow="Administration"
+    <div className="workspace-page w-full">
+      <ConsoleHeader
+        icon={Activity}
         title="Operations"
         description="Service health, review workload and recent reviewer activity across the workspace."
-      />
-      <ContentSection className="space-y-8">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-sm text-text-secondary" aria-live="polite">
-            {loading
-              ? "Loading operations data…"
-              : health
-                ? health.label
-                : "Health not checked yet"}
-          </p>
+        actions={
           <button
             type="button"
-            className="btn-secondary px-3 py-1.5 text-xs"
+            className="btn-secondary h-9 px-3 text-[13px]"
             onClick={() => void load()}
             disabled={loading}
           >
@@ -247,7 +237,12 @@ export default function GovernanceOpsDashboard() {
             )}
             Refresh
           </button>
-        </div>
+        }
+      />
+      <ContentSection className="space-y-8">
+        <p className="text-sm text-text-secondary" aria-live="polite">
+          {loading ? "Loading operations data…" : health ? health.label : "Health not checked yet"}
+        </p>
 
         {error && (
           <div className="rounded-lg border border-danger/30 bg-danger/5 px-3 py-2 text-sm text-danger" role="alert">
@@ -257,7 +252,7 @@ export default function GovernanceOpsDashboard() {
 
         {health && (
           <section
-            className="rounded-xl border border-border bg-surface px-4 py-3"
+            className="data-panel px-4 py-3"
             data-testid="ops-health"
           >
             <h2 className="text-xs font-semibold uppercase tracking-wide text-text-secondary">
@@ -651,7 +646,7 @@ export default function GovernanceOpsDashboard() {
           </Link>
         </section>
       </ContentSection>
-    </>
+    </div>
   );
 }
 

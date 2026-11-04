@@ -30,7 +30,7 @@ vi.mock("next/link", () => ({
 // Validation rules load their own data; they have their own tests.
 vi.mock("@/components/playbook/validation-rules-section", () => ({ default: () => null }));
 
-vi.mock("@/components/layout/PageHero", () => ({
+vi.mock("@/components/layout/ConsoleHeader", () => ({
   default: ({ title }: { title: string }) => <h1>{title}</h1>,
 }));
 
@@ -175,7 +175,7 @@ describe("PlaybookPage", () => {
   it("shows the clause library, inspector and portfolio deviations", async () => {
     render(<PlaybookPage />);
     expect(await screen.findByText("contract.pdf")).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "Clause Playbook & Compliance Rules" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Clause playbook" })).toBeTruthy();
     const index = screen.getByRole("navigation", { name: "Clause index" });
     expect(within(index).getByText("Cybersecurity & supply chain")).toBeTruthy();
     expect(within(index).getByText("Uncategorized")).toBeTruthy();

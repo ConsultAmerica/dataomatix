@@ -8,7 +8,7 @@ import { ArrowUpRight, BookCheck, ChevronDown, ChevronRight, Loader2, Search, Sp
 import AskAnswer from "@/components/ask/ask-answer";
 import RegulatoryComparator from "@/components/clauses/regulatory-comparator";
 import ContentSection from "@/components/layout/ContentSection";
-import PageHero from "@/components/layout/PageHero";
+import ConsoleHeader from "@/components/layout/ConsoleHeader";
 import SaveQueryButton from "@/components/playbook/save-query-button";
 import { askQuestion, type AskResponse } from "@/lib/ask";
 import { citationsByDocument, PRESET_PROMPTS, searchTerms } from "@/lib/clause-citations";
@@ -126,30 +126,29 @@ function ClausesContent() {
   }
 
   return (
-    <>
-      <PageHero
-        compact
-        eyebrow="Intelligence & AI"
+    <div className="workspace-page w-full">
+      <ConsoleHeader
+        icon={BookCheck}
         title="FAR / DFARS intelligence"
         description="Ask about FAR and DFARS requirements across your contracts, check which agreements cite a clause, and compare ingested regulation texts — every answer linked to the page it came from."
       />
 
       <ContentSection>
         <form onSubmit={handleSubmit} className="mb-4" role="search" aria-label="Ask FAR / DFARS">
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-5 top-1/2 h-5 w-5 -translate-y-1/2 text-text-secondary" />
+          <div className="data-panel relative p-2">
+            <Search className="pointer-events-none absolute left-5 top-1/2 h-4 w-4 -translate-y-1/2 text-text-secondary" />
             <input
               type="text"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               aria-label="Ask FAR/DFARS or check cross-references"
               placeholder="Ask FAR/DFARS or check cross-references (e.g. 'Which contracts include DFARS 252.204-7012?')"
-              className="w-full rounded-2xl border border-border bg-surface py-5 pl-14 pr-28 text-base shadow-sm outline-none focus:border-primary/40"
+              className="control w-full border-0 bg-transparent py-3 pl-10 pr-24 text-sm shadow-none focus:ring-0"
             />
             <button
               type="submit"
               disabled={!query.trim()}
-              className="btn-primary absolute right-2.5 top-1/2 -translate-y-1/2 disabled:opacity-50"
+              className="btn-primary absolute right-3 top-1/2 h-9 -translate-y-1/2 px-3.5 text-[13px] disabled:opacity-50"
             >
               Ask
             </button>
@@ -336,6 +335,6 @@ function ClausesContent() {
           </Link>
         </p>
       </ContentSection>
-    </>
+    </div>
   );
 }

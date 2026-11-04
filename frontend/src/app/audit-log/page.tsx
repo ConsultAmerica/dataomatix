@@ -3,11 +3,11 @@
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, ScrollText } from "lucide-react";
 
-import EmptyState from "@/components/illustrations/empty-state";
+import ConsoleHeader from "@/components/layout/ConsoleHeader";
+import EmptyState from "@/components/ui/empty-state";
 import { LoadingState } from "@/components/layout/StatusState";
-import PageHeader from "@/components/page-header";
 import { getGlobalAuditLog } from "@/lib/documents";
 import type {
   AuditAction,
@@ -118,21 +118,23 @@ function AuditLogContent() {
   }
 
   return (
-    <div className="page-container-wide">
-      <PageHeader
+    <div className="workspace-page w-full">
+      <ConsoleHeader
+        icon={ScrollText}
         title="Audit explorer"
-        description="Append-only metadata review decisions for documents in your workspace. Event category is metadata review (this API). Oracle, export, and classification history stay on their own APIs — they are not invented here."
+        description="Append-only metadata review decisions for documents in your workspace. Oracle, export, and classification history stay on their own APIs."
       />
 
+      <div className="px-4 py-4 sm:px-6 sm:py-5">
       <form
         onSubmit={applyFilters}
-        className="mb-6 grid gap-3 rounded-xl border border-border bg-surface p-4 sm:grid-cols-2 lg:grid-cols-4"
+        className="data-panel mb-4 grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4"
         data-testid="audit-filters"
       >
         <label className="text-xs text-text-secondary">
           Document ID
           <input
-            className="mt-1 w-full rounded-lg border border-border bg-background px-2 py-1.5 text-sm"
+            className="control mt-1 w-full"
             value={draft.documentId ?? ""}
             onChange={(e) =>
               setDraft((current) => ({ ...current, documentId: e.target.value }))
@@ -142,7 +144,7 @@ function AuditLogContent() {
         <label className="text-xs text-text-secondary">
           Actor / changed by
           <input
-            className="mt-1 w-full rounded-lg border border-border bg-background px-2 py-1.5 text-sm"
+            className="control mt-1 w-full"
             value={draft.changedBy ?? ""}
             onChange={(e) =>
               setDraft((current) => ({ ...current, changedBy: e.target.value }))
@@ -152,7 +154,7 @@ function AuditLogContent() {
         <label className="text-xs text-text-secondary">
           Action
           <select
-            className="mt-1 w-full rounded-lg border border-border bg-background px-2 py-1.5 text-sm"
+            className="control mt-1 w-full"
             value={draft.action ?? ""}
             onChange={(e) =>
               setDraft((current) => ({ ...current, action: e.target.value }))
@@ -168,7 +170,7 @@ function AuditLogContent() {
         <label className="text-xs text-text-secondary">
           Outcome (new status)
           <select
-            className="mt-1 w-full rounded-lg border border-border bg-background px-2 py-1.5 text-sm"
+            className="control mt-1 w-full"
             value={draft.outcome ?? ""}
             onChange={(e) =>
               setDraft((current) => ({ ...current, outcome: e.target.value }))
@@ -185,7 +187,7 @@ function AuditLogContent() {
         <label className="text-xs text-text-secondary">
           Correlation / request ID
           <input
-            className="mt-1 w-full rounded-lg border border-border bg-background px-2 py-1.5 text-sm font-mono"
+            className="control mt-1 w-full font-mono"
             value={draft.requestId ?? ""}
             onChange={(e) =>
               setDraft((current) => ({ ...current, requestId: e.target.value }))
@@ -196,7 +198,7 @@ function AuditLogContent() {
           From
           <input
             type="datetime-local"
-            className="mt-1 w-full rounded-lg border border-border bg-background px-2 py-1.5 text-sm"
+            className="control mt-1 w-full"
             value={draft.from ?? ""}
             onChange={(e) =>
               setDraft((current) => ({ ...current, from: e.target.value }))
@@ -207,7 +209,7 @@ function AuditLogContent() {
           To
           <input
             type="datetime-local"
-            className="mt-1 w-full rounded-lg border border-border bg-background px-2 py-1.5 text-sm"
+            className="control mt-1 w-full"
             value={draft.to ?? ""}
             onChange={(e) =>
               setDraft((current) => ({ ...current, to: e.target.value }))
@@ -246,7 +248,7 @@ function AuditLogContent() {
           />
         ) : entries.length === 0 ? (
           <EmptyState
-            variant="documents"
+            icon={ScrollText}
             title="No audit actions match"
             description="Accept, edit and reject decisions appear here once reviewers act on documents. If you've set filters, try clearing them."
           />
@@ -369,6 +371,7 @@ function AuditLogContent() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

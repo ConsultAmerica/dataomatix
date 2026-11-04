@@ -4,8 +4,8 @@
  * the one that reads on the current chrome (globals.css, .da-logo-*). The
  * pieces stay separate so a narrow bar can drop the icon and keep the name.
  */
-const MARK = { light: "/brand/dataomatix-mark.png", dark: "/brand/dataomatix-mark-on-dark.png", ratio: 406 / 214 };
-const WORD = { light: "/brand/dataomatix-wordmark.png", dark: "/brand/dataomatix-wordmark-on-dark.png", ratio: 1050 / 214 };
+const MARK = { light: "/brand/dataomatix-mark.png", dark: "/brand/dataomatix-mark-on-dark.png", ratio: 209 / 126 };
+const WORD = { light: "/brand/dataomatix-wordmark.png", dark: "/brand/dataomatix-wordmark-on-dark.png", ratio: 510 / 110 };
 
 export default function DataomatixLogo({
   size = 36,

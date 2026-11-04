@@ -38,7 +38,7 @@ vi.mock("@/lib/playbook", async (importOriginal) => ({
 vi.mock("@/components/playbook/save-query-button", () => ({
   default: ({ query }: { query: string }) => <span data-testid="save-query">{query}</span>,
 }));
-vi.mock("@/components/layout/PageHero", () => ({
+vi.mock("@/components/layout/ConsoleHeader", () => ({
   default: ({ title }: { title: string }) => <h1>{title}</h1>,
 }));
 

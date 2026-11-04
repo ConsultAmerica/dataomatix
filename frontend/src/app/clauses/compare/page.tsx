@@ -3,11 +3,11 @@
 import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Loader2, Search } from "lucide-react";
+import { GitCompareArrows, Loader2, Search } from "lucide-react";
 
 import RegulatoryComparator from "@/components/clauses/regulatory-comparator";
 import ConfidenceIndicator from "@/components/confidence-indicator";
-import PageHeader from "@/components/page-header";
+import ConsoleHeader from "@/components/layout/ConsoleHeader";
 import { getClauses, searchDocuments } from "@/lib/documents";
 import type { ClauseResult } from "@/types/document";
 
@@ -36,34 +36,30 @@ function ClauseCompareContent() {
   const clause = params.get("clause")?.trim() ?? "";
 
   return (
-    <div className="page-container-wide">
-      <PageHeader
+    <div className="workspace-page w-full">
+      <ConsoleHeader
+        icon={GitCompareArrows}
         title="Compare clauses"
         description="Compare ingested FAR / DFARS regulation texts word by word, or the same clause provision across your contracts."
+        tabs={[
+          {
+            id: "regulatory",
+            label: "Regulation texts",
+            active: mode === "regulatory",
+            onSelect: () => router.replace("/clauses/compare", { scroll: false }),
+          },
+          {
+            id: "contracts",
+            label: "Across contracts",
+            active: mode === "contracts",
+            onSelect: () => router.replace("/clauses/compare?mode=contracts", { scroll: false }),
+          },
+        ]}
+        tabsLabel="Comparison"
       />
-      <div className="mb-6 flex gap-1 rounded-lg border border-border p-0.5 sm:w-fit" role="tablist" aria-label="Comparison">
-        {(
-          [
-            ["regulatory", "Regulation texts"],
-            ["contracts", "Across contracts"],
-          ] as const
-        ).map(([id, label]) => (
-          <button
-            key={id}
-            type="button"
-            role="tab"
-            aria-selected={mode === id}
-            onClick={() => router.replace(id === "contracts" ? "/clauses/compare?mode=contracts" : "/clauses/compare", { scroll: false })}
-            className={[
-              "rounded-md px-3 py-1.5 text-sm font-medium",
-              mode === id ? "bg-primary-soft text-primary" : "text-text-secondary hover:text-foreground",
-            ].join(" ")}
-          >
-            {label}
-          </button>
-        ))}
+      <div className="px-4 py-4 sm:px-6 sm:py-5">
+        {mode === "regulatory" ? <RegulatoryComparator key={clause} initialClause={clause} /> : <CrossContractCompare />}
       </div>
-      {mode === "regulatory" ? <RegulatoryComparator key={clause} initialClause={clause} /> : <CrossContractCompare />}
     </div>
   );
 }

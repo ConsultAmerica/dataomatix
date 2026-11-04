@@ -1,7 +1,9 @@
 "use client";
 
+import { BarChart3 } from "lucide-react";
+
 import ContentSection from "@/components/layout/ContentSection";
-import PageHero from "@/components/layout/PageHero";
+import ConsoleHeader from "@/components/layout/ConsoleHeader";
 import {
   BarList,
   MonthBars,
@@ -15,10 +17,9 @@ import {
 export default function AnalyticsPage() {
   const { portfolio, error, retry } = usePortfolio();
   return (
-    <>
-      <PageHero
-        compact
-        eyebrow="Intelligence & AI"
+    <div className="workspace-page w-full">
+      <ConsoleHeader
+        icon={BarChart3}
         title="Portfolio analytics"
         description="Volume, document mix, extraction quality and review progress across every document in your workspace."
       />
@@ -90,6 +91,6 @@ export default function AnalyticsPage() {
           }}
         </PortfolioGate>
       </ContentSection>
-    </>
+    </div>
   );
 }
