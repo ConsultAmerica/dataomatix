@@ -22,7 +22,7 @@ import fitz
 import httpx
 
 BASE = os.environ.get("RC_SMOKE_BASE", "https://data-agent-backend-qbmc.onrender.com")
-FRONTEND = os.environ.get("RC_SMOKE_FRONTEND", "https://data-agent-ca.vercel.app")
+FRONTEND = os.environ.get("RC_SMOKE_FRONTEND", "https://dataomatix.vercel.app")
 
 
 def _auth_headers() -> dict[str, str]:

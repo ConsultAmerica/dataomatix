@@ -5,10 +5,10 @@ It retrieves evidence, extracts with explainable confidence, routes fields for h
 
 | | |
 |---|---|
-| **Live frontend** | https://data-agent-ca.vercel.app |
+| **Live frontend** | https://dataomatix.vercel.app |
 | **Live API** | https://data-agent-backend-qbmc.onrender.com |
 | **Health / Ready** | [/health](https://data-agent-backend-qbmc.onrender.com/health) · [/ready](https://data-agent-backend-qbmc.onrender.com/ready) |
-| **Architecture (in-app)** | [/architecture](https://data-agent-ca.vercel.app/architecture) |
+| **Architecture (in-app)** | [/architecture](https://dataomatix.vercel.app/architecture) |
 
 ---
 

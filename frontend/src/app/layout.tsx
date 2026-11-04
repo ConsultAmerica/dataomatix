@@ -20,7 +20,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL ?? "https://data-agent-ca.vercel.app";
+  process.env.NEXT_PUBLIC_SITE_URL ?? "https://dataomatix.vercel.app";
 const SITE_DESCRIPTION =
   "Source-grounded extraction for federal contracts. Every field is boxed on the source page, low-confidence values route to human review, and approved data exports Oracle-ready with a full audit trail.";
 

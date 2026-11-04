@@ -11,7 +11,7 @@ import fitz
 import httpx
 from PIL import Image, ImageDraw, ImageFont
 
-FRONTEND = "https://data-agent-ca.vercel.app"
+FRONTEND = "https://dataomatix.vercel.app"
 API = "https://data-agent-backend-qbmc.onrender.com"
 ORIGIN = FRONTEND
 

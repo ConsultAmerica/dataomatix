@@ -170,7 +170,7 @@ export default function ArchitecturePage() {
             <FileSearch className="mb-2 h-4 w-4 text-text-teal" />
             <p className="text-sm font-semibold text-foreground">Frontend</p>
             <p className="mt-1 text-xs text-text-secondary">
-              Vercel · data-agent-ca.vercel.app
+              Vercel · dataomatix.vercel.app
             </p>
           </div>
           <div className="rounded-xl border border-border bg-surface p-4">
