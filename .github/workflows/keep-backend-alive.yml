@@ -24,7 +24,7 @@ jobs:
             --retry-all-errors \
             --connect-timeout 20 \
             --max-time 180 \
-            https://data-agent-backend-qbmc.onrender.com/health
+            https://dataomatix-backend.onrender.com/health
 
           echo ""
           echo "Backend responded successfully."
