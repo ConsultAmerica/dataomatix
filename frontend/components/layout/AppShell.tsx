@@ -65,7 +65,9 @@ export default function AppShell({ children }: AppShellProps) {
     return (
       <div className="marketing-shell flex h-full min-h-0 flex-col" data-testid="marketing-shell">
         <GlobalHeader onOpenSearch={openSearch} />
-        <main className="min-h-0 flex-1 overflow-y-auto bg-background">{children}</main>
+        <main className="min-h-0 flex-1 overflow-y-auto bg-background">
+          <div key={pathname} className="dx-page-enter h-full">{children}</div>
+        </main>
         <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
         <AssistantWidget />
       </div>
@@ -93,7 +95,9 @@ export default function AppShell({ children }: AppShellProps) {
                 <Breadcrumbs />
               </Suspense>
             </div>
-            <main className="workspace-content min-h-0 flex-1">{children}</main>
+            <main className="workspace-content min-h-0 flex-1">
+              <div key={pathname} className="dx-page-enter h-full">{children}</div>
+            </main>
           </div>
         </div>
         <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />

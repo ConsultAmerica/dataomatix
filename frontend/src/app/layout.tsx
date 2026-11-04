@@ -1,21 +1,30 @@
 import type { Metadata } from "next";
-import { Inter, JetBrains_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Instrument_Serif } from "next/font/google";
 import "./globals.css";
+import "./studio.css";
 
 import AppShell from "@/components/layout/AppShell";
 
-// Inter for the UI; JetBrains Mono for identifiers (PIIDs, CLINs, clause
-// numbers) and audit timestamps. They fill the existing font variables, so
-// every component switches without edits.
-const inter = Inter({
+// Geist for the UI, Geist Mono for identifiers (PIIDs, CLINs, clause numbers)
+// and audit timestamps, Instrument Serif for display headlines. Sans and mono
+// fill the existing font variables, so every component switches without edits.
+const sans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
   display: "swap",
 });
 
-const jetbrainsMono = JetBrains_Mono({
+const mono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+  display: "swap",
+});
+
+const serif = Instrument_Serif({
+  variable: "--font-dx-serif",
+  subsets: ["latin"],
+  weight: "400",
+  style: ["normal", "italic"],
   display: "swap",
 });
 
@@ -64,7 +73,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${jetbrainsMono.variable} h-full antialiased`}
+      className={`${sans.variable} ${mono.variable} ${serif.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <head>

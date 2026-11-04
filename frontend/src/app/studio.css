@@ -1,0 +1,830 @@
+/*
+ * DataoMatix "Studio" design layer.
+ *
+ * Loaded after globals.css. It changes how things look, never what they do:
+ * tokens first (so the ~5k token-styled utilities follow), then the shared
+ * component classes, then motion. The palette comes from the logo: ink navy
+ * for text and primary actions, electric blue for focus and links, and the
+ * orange "O" kept for one job only, evidence (the box on the source page).
+ */
+
+:root {
+  /* Brand primitives */
+  --dx-ink: #0b1530;
+  --dx-on-ink: #f7f6f2;
+  --dx-blue: #2152e8;
+  --dx-accent: #ec6a1f;
+  --dx-page: #fffefb;
+  --dx-serif: var(--font-dx-serif), "Iowan Old Style", Georgia, serif;
+  --dx-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --dx-ease-io: cubic-bezier(0.65, 0, 0.35, 1);
+  --dx-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
+
+  /* Surfaces: warm paper, not cold slate */
+  --bg-main: #f6f5f1;
+  --bg-soft: #efede7;
+  --surface: #ffffff;
+  --surface-soft: #f2f0ea;
+  --border: #e6e3db;
+  --border-strong: #d4cfc4;
+
+  /* Text */
+  --text-dark: #0e1322;
+  --text-secondary: #4b5162;
+  --text-muted: #6f7584;
+  --text-teal: var(--dx-blue);
+
+  /* Actions: ink */
+  --sirion-bg-deep: var(--dx-ink);
+  --sirion-teal-dark: #0f1b3d;
+  --sirion-teal: var(--dx-ink);
+  --sirion-teal-soft: #c9cfdd;
+  --primary: var(--dx-ink);
+  --primary-hover: #000a22;
+  --primary-soft: #ebe9e2;
+  --accent-cyan: var(--dx-blue);
+  --accent-cyan-dark: #1a43c2;
+  --accent-cyan-soft: #c3d0f8;
+  --color-focus: var(--dx-blue);
+
+  --selection-tint: rgba(33, 82, 232, 0.08);
+  --selection-edge: rgba(33, 82, 232, 0.5);
+  --row-hover: #f7f6f2;
+  --field-selected: #eef1fd;
+  --progress-track: #ebe8e0;
+
+  --menu-background: #f6f5f1;
+  --menu-tile: #ffffff;
+  --menu-tile-hover: #f2f0ea;
+
+  --success: #1d7a4c;
+  --warning: #b35d07;
+  --danger: #c2381f;
+
+  --radius-card: 16px;
+  --radius-button: 10px;
+  --shadow-soft:
+    0 1px 1px rgba(28, 24, 16, 0.03),
+    0 2px 6px -2px rgba(28, 24, 16, 0.06);
+  --shadow-elevated:
+    0 1px 2px rgba(28, 24, 16, 0.04),
+    0 18px 40px -18px rgba(28, 24, 16, 0.22);
+
+  --sidebar-width: 15rem;
+  --workspace-topbar-height: 3.5rem;
+  --layout-workspace-gutter: 1.75rem;
+
+  /* Tailwind's slate scale, warmed to match the paper (hard-coded utilities
+     like text-slate-500 compile to these variables). */
+  --color-slate-50: #f7f6f2;
+  --color-slate-100: #efede7;
+  --color-slate-200: #e6e3db;
+  --color-slate-300: #d4cfc4;
+  --color-slate-400: #a19c91;
+  --color-slate-500: #6f7584;
+  --color-slate-600: #555b6a;
+  --color-slate-700: #3c4252;
+  --color-slate-800: #23293a;
+  --color-slate-900: #141a2b;
+  --color-slate-950: #0b1022;
+  --color-blue-50: #eef2fe;
+  --color-blue-100: #dde5fd;
+  --color-blue-600: #2152e8;
+  --color-blue-700: #1a43c2;
+  --color-blue-800: #17389c;
+}
+
+:root[data-theme="dark"] {
+  --dx-ink: #f3f1ea;
+  --dx-on-ink: #0b0d12;
+  --dx-blue: #7d97ff;
+  --dx-accent: #ff8a45;
+  --dx-page: #f4f2ec;
+
+  --bg-main: #0b0d12;
+  --bg-soft: #10131a;
+  --surface: #12151c;
+  --surface-soft: #191d26;
+  --border: #242934;
+  --border-strong: #343a47;
+  --text-dark: #eceef2;
+  --text-secondary: #a3a9b6;
+  --text-muted: #7e8595;
+  /* Many components pair bg-primary with white text, so dark mode keeps a
+     mid-tone primary (the logo blue); ink buttons use --dx-ink instead. */
+  --primary: #4f6cf0;
+  --primary-hover: #6680f4;
+  --primary-soft: #1b2342;
+  --sirion-teal: #4f6cf0;
+  --sirion-bg-deep: #07080c;
+  --sirion-teal-dark: #0f1219;
+  --row-hover: #161a22;
+  --field-selected: #1a2140;
+  --menu-background: #0f1218;
+  --menu-tile: #12151c;
+  --menu-tile-hover: #191d26;
+  --color-slate-50: #12151c;
+  --color-slate-100: #191d26;
+  --color-slate-200: #242934;
+  --color-slate-300: #343a47;
+  --color-slate-400: #6a7181;
+  --color-slate-500: #8a91a0;
+  --color-slate-600: #a3a9b6;
+  --color-slate-700: #c3c8d2;
+  --color-slate-800: #dde0e6;
+  --color-slate-900: #eceef2;
+  --color-slate-950: #f7f8fa;
+}
+
+/* ------------------------------------------------------------------ base */
+
+html {
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "ss01", "cv11";
+}
+
+body {
+  letter-spacing: -0.006em;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--dx-blue) 20%, transparent);
+}
+
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--dx-blue);
+  outline-offset: 2px;
+}
+
+:where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select, textarea) {
+  transition:
+    border-color 160ms ease,
+    box-shadow 200ms ease,
+    background 160ms ease;
+}
+
+:where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select, textarea):focus {
+  border-color: color-mix(in srgb, var(--dx-blue) 60%, var(--border));
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--dx-blue) 12%, transparent);
+  outline: none;
+}
+
+:where(button, a) {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.font-id,
+code,
+kbd {
+  font-feature-settings: "zero", "ss02";
+}
+
+/* Thin, quiet scrollbars everywhere. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--text-muted) 30%, transparent) transparent;
+}
+
+/* ------------------------------------------------------------ typography */
+
+.section-title,
+.statement-title,
+.headline-editorial,
+.page-hero-title,
+.next-step-title {
+  font-family: var(--dx-serif);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+.section-title {
+  font-size: clamp(2rem, 3.6vw, 3rem);
+  line-height: 1.04;
+  max-width: 20ch;
+}
+
+.statement-title {
+  font-size: clamp(2.3rem, 4.6vw, 4rem);
+  line-height: 1.02;
+  color: var(--foreground);
+}
+
+.next-step-title {
+  font-size: clamp(2.2rem, 4vw, 3.4rem);
+}
+
+.page-hero-title {
+  line-height: 1.02;
+}
+
+.section-eyebrow,
+.eyebrow,
+.page-hero-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+}
+
+.section-eyebrow::before,
+.eyebrow::before {
+  content: "";
+  height: 0.4rem;
+  width: 0.4rem;
+  border-radius: 2px;
+  background: var(--dx-accent);
+}
+
+.section-lede {
+  color: var(--text-secondary);
+}
+
+/* The old blue gradients become a quiet italic in the serif. */
+.text-gradient-accent,
+.text-gradient-accent-light {
+  background: none;
+  -webkit-background-clip: initial;
+  background-clip: initial;
+  font-style: italic;
+  color: color-mix(in srgb, currentColor 58%, transparent);
+}
+
+.section-title .text-gradient-accent,
+.statement-title .text-gradient-accent-light,
+.statement-title .text-gradient-accent {
+  color: color-mix(in srgb, var(--foreground) 55%, var(--background));
+}
+
+.marketing-band-dark .text-gradient-accent,
+.marketing-band-dark .text-gradient-accent-light,
+.next-step-band .text-gradient-accent,
+.next-step-band .text-gradient-accent-light {
+  color: var(--dx-accent);
+}
+
+/* -------------------------------------------------------------- buttons */
+
+@layer components {
+  .btn-primary {
+    border-radius: var(--radius-button);
+    background: var(--dx-ink);
+    color: var(--dx-on-ink);
+    font-weight: 600;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.1),
+      0 1px 2px rgba(11, 21, 48, 0.2),
+      0 6px 16px -8px rgba(11, 21, 48, 0.45);
+    transition:
+      transform 200ms var(--dx-spring),
+      box-shadow 200ms ease,
+      background 160ms ease,
+      opacity 160ms ease;
+  }
+
+  .btn-primary:hover {
+    background: color-mix(in srgb, var(--dx-ink) 86%, var(--dx-blue));
+    transform: translateY(-1px);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.1),
+      0 1px 2px rgba(11, 21, 48, 0.2),
+      0 12px 24px -10px rgba(11, 21, 48, 0.5);
+  }
+
+  .btn-primary:active,
+  .btn-secondary:active {
+    transform: scale(0.98);
+  }
+
+  .btn-primary:disabled,
+  .btn-secondary:disabled {
+    transform: none;
+    box-shadow: none;
+  }
+
+  .btn-secondary {
+    border-radius: var(--radius-button);
+    border-color: var(--border-strong);
+    background: var(--surface);
+    font-weight: 600;
+    box-shadow: 0 1px 2px rgba(28, 24, 16, 0.05);
+    transition:
+      transform 200ms var(--dx-spring),
+      border-color 160ms ease,
+      background 160ms ease;
+  }
+
+  .btn-secondary:hover {
+    background: var(--surface);
+    border-color: var(--foreground);
+  }
+
+  .btn-tertiary {
+    color: var(--dx-blue);
+    font-weight: 600;
+  }
+
+  .btn-tertiary:hover {
+    color: var(--accent-cyan-dark);
+  }
+}
+
+.btn-new-extraction,
+.btn-ask-agent {
+  height: 2.25rem;
+  border-radius: 999px;
+  padding: 0 0.95rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  transition:
+    transform 200ms var(--dx-spring),
+    background 160ms ease,
+    border-color 160ms ease,
+    box-shadow 200ms ease;
+}
+
+.btn-new-extraction {
+  border-color: var(--border-strong);
+  background: var(--surface);
+}
+
+.btn-new-extraction:hover {
+  border-color: var(--foreground);
+  background: var(--surface);
+  transform: translateY(-1px);
+}
+
+.btn-ask-agent {
+  background: var(--dx-ink);
+  color: var(--dx-on-ink);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 6px 16px -8px rgba(11, 21, 48, 0.55);
+}
+
+.btn-ask-agent:hover {
+  background: color-mix(in srgb, var(--dx-ink) 86%, var(--dx-blue));
+  filter: none;
+  transform: translateY(-1px);
+}
+
+.btn-ask-agent svg {
+  color: var(--dx-accent);
+}
+
+.btn-hero-primary,
+.btn-hero-secondary {
+  border-radius: 999px !important;
+}
+
+.chip {
+  border-color: var(--border);
+  background: var(--surface);
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease,
+    transform 200ms var(--dx-spring);
+}
+
+.chip:hover {
+  border-color: var(--border-strong);
+  background: var(--surface);
+  color: var(--foreground);
+}
+
+.chip-active {
+  border-color: var(--dx-ink);
+  background: var(--dx-ink);
+  color: var(--dx-on-ink);
+}
+
+.nav-icon-button {
+  border-radius: 999px;
+}
+
+/* --------------------------------------------------------------- cards */
+
+.editorial-card,
+.data-panel {
+  border-color: var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-soft);
+}
+
+.editorial-card-interactive,
+.capability-tile,
+.next-step-card,
+.mega-menu-tile {
+  transition:
+    transform 260ms var(--dx-ease),
+    box-shadow 260ms var(--dx-ease),
+    border-color 200ms ease;
+}
+
+.editorial-card-interactive:hover,
+.capability-tile:hover,
+.next-step-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-elevated);
+  border-color: var(--border-strong);
+}
+
+.feature-card {
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  box-shadow: var(--shadow-soft);
+}
+
+.value-card {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  transition: transform 260ms var(--dx-ease), box-shadow 260ms var(--dx-ease);
+}
+
+.value-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-elevated);
+}
+
+.value-card-icon {
+  background: var(--surface-soft) !important;
+  color: var(--foreground) !important;
+}
+
+.metric-grid {
+  border-radius: 20px;
+  box-shadow: var(--shadow-soft);
+}
+
+.metric-value {
+  font-family: var(--dx-serif);
+  font-weight: 400;
+  font-size: clamp(2.2rem, 3.4vw, 3rem);
+  letter-spacing: -0.02em;
+}
+
+.skeleton {
+  background: linear-gradient(90deg, var(--surface-soft) 0%, color-mix(in srgb, var(--surface) 70%, var(--surface-soft)) 50%, var(--surface-soft) 100%);
+  background-size: 200% 100%;
+}
+
+/* ------------------------------------------------------ marketing bands */
+
+.global-header,
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  height: 4rem;
+  padding-block: 0;
+  border-bottom-color: color-mix(in srgb, var(--border) 70%, transparent);
+  background: color-mix(in srgb, var(--background) 78%, transparent);
+  box-shadow: none;
+  backdrop-filter: blur(16px) saturate(1.4);
+  -webkit-backdrop-filter: blur(16px) saturate(1.4);
+}
+
+.nav-menu-button {
+  height: 2.25rem;
+  border-radius: 999px;
+  color: var(--text-secondary);
+}
+
+.nav-menu-button:hover,
+.nav-menu-button-open,
+.nav-menu-button-current {
+  background: color-mix(in srgb, var(--foreground) 6%, transparent);
+  color: var(--foreground);
+}
+
+.mega-menu-panel {
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  box-shadow: 0 30px 80px -30px rgba(28, 24, 16, 0.35);
+  backdrop-filter: blur(18px);
+  animation: dx-pop 220ms var(--dx-ease) both;
+  transform-origin: top center;
+}
+
+.statement-band {
+  background: var(--background);
+}
+
+.marketing-band-light {
+  background: var(--background);
+}
+
+.marketing-band-dark,
+.next-step-band,
+.marketing-cta-finale {
+  background:
+    radial-gradient(60% 80% at 80% 0%, rgba(236, 106, 31, 0.14), transparent 60%),
+    radial-gradient(50% 60% at 0% 100%, rgba(33, 82, 232, 0.2), transparent 60%),
+    #0b1530;
+  color: #f7f6f2;
+}
+
+:root[data-theme="dark"] .marketing-band-dark,
+:root[data-theme="dark"] .next-step-band,
+:root[data-theme="dark"] .marketing-cta-finale {
+  background:
+    radial-gradient(60% 80% at 80% 0%, rgba(255, 138, 69, 0.12), transparent 60%),
+    #07080c;
+}
+
+.next-step-card {
+  border: 1px solid rgba(247, 246, 242, 0.12);
+  border-radius: 20px;
+  background: rgba(247, 246, 242, 0.04);
+  backdrop-filter: blur(6px);
+}
+
+.next-step-card:hover {
+  background: rgba(247, 246, 242, 0.07);
+  border-color: rgba(247, 246, 242, 0.24);
+}
+
+/* ----------------------------------------------------- workspace shell */
+
+.workspace-shell {
+  background: var(--background);
+}
+
+.workspace-topbar {
+  border-bottom-color: color-mix(in srgb, var(--border) 80%, transparent);
+  background: color-mix(in srgb, var(--background) 82%, transparent);
+  box-shadow: none;
+  backdrop-filter: blur(16px) saturate(1.4);
+  padding: 0 1rem 0 1.15rem;
+}
+
+.workspace-chrome-bar {
+  border-bottom: 0;
+  background: color-mix(in srgb, var(--background) 80%, transparent);
+  padding-top: 0.85rem;
+  padding-bottom: 0.35rem;
+  backdrop-filter: blur(12px);
+  font-size: 0.78rem;
+}
+
+.workspace-sidebar {
+  border-right-color: color-mix(in srgb, var(--border) 80%, transparent);
+  background: var(--background);
+  padding: 0.6rem 0.65rem 1rem;
+  transition: width 260ms var(--dx-ease);
+}
+
+.workspace-sidebar-group {
+  margin-top: 1.1rem;
+  font-family: var(--font-mono);
+  font-size: 0.64rem;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+}
+
+.workspace-sidebar-link {
+  border-radius: 9px;
+  padding: 0.44rem 0.7rem;
+  font-size: 0.84rem;
+  color: var(--text-secondary);
+  transition:
+    background 140ms ease,
+    color 140ms ease,
+    box-shadow 200ms ease,
+    transform 200ms var(--dx-spring);
+}
+
+.workspace-sidebar-link:hover {
+  background: color-mix(in srgb, var(--foreground) 5%, transparent);
+  color: var(--foreground);
+}
+
+.workspace-sidebar-link-active,
+.workspace-sidebar-link-active:hover {
+  background: var(--surface);
+  color: var(--foreground);
+  font-weight: 600;
+  box-shadow:
+    0 0 0 1px var(--border),
+    0 1px 2px rgba(28, 24, 16, 0.06),
+    0 4px 10px -6px rgba(28, 24, 16, 0.18);
+}
+
+.workspace-sidebar-link::before {
+  left: -0.65rem;
+  height: 1.25rem;
+  width: 3px;
+  background: var(--dx-accent);
+  transition: transform 260ms var(--dx-spring);
+}
+
+.workspace-sidebar-link-active .workspace-sidebar-icon {
+  color: var(--foreground);
+}
+
+.workspace-sidebar-tooltip {
+  border-radius: 8px;
+  background: var(--dx-ink);
+  color: var(--dx-on-ink);
+}
+
+.workspace-sidebar-backdrop {
+  background: rgba(11, 21, 48, 0.35);
+  backdrop-filter: blur(4px);
+  animation: dx-fade 200ms ease both;
+}
+
+.workspace-sidebar-mobile-open {
+  animation: dx-slide-in 320ms var(--dx-ease) both;
+}
+
+/* Page header band: no tinted strip, a confident title, underline tabs. */
+.console-header {
+  background: transparent;
+  border-bottom-color: var(--border);
+}
+
+.console-header h1 {
+  font-family: var(--dx-serif);
+  font-size: 2rem;
+  font-weight: 400;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.console-header h1 + p {
+  margin-top: 0.35rem;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.console-header > div > div:first-child > div:first-child > span:first-child {
+  height: 2.5rem;
+  width: 2.5rem;
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--foreground);
+  box-shadow:
+    0 0 0 1px var(--border),
+    0 1px 2px rgba(28, 24, 16, 0.06);
+}
+
+.console-header [role="group"] button {
+  position: relative;
+  border-bottom-width: 0;
+  padding-bottom: 0.8rem;
+  transition: color 160ms ease;
+}
+
+.console-header [role="group"] button::after {
+  content: "";
+  position: absolute;
+  left: 0.6rem;
+  right: 0.6rem;
+  bottom: 0;
+  height: 2px;
+  border-radius: 2px 2px 0 0;
+  background: var(--foreground);
+  transform: scaleX(0);
+  transition: transform 280ms var(--dx-ease);
+}
+
+.console-header [role="group"] button[aria-pressed="true"]::after {
+  transform: scaleX(1);
+}
+
+.workspace-page-header h1 {
+  font-family: var(--dx-serif);
+  font-weight: 400;
+  font-size: 2rem;
+  letter-spacing: -0.02em;
+}
+
+/* Tables read like a ledger: hairlines, a soft hover. */
+.table-row-hover,
+.list-row {
+  transition: background 120ms ease;
+}
+
+table thead th {
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+/* ---------------------------------------------------------------- motion */
+
+.dx-page-enter {
+  animation: dx-page 420ms var(--dx-ease) both;
+}
+
+.animate-fade-in {
+  animation: dx-page 260ms var(--dx-ease) both;
+}
+
+@keyframes dx-page {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes dx-pop {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes dx-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes dx-slide-in {
+  from {
+    transform: translateX(-16px);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dx-page-enter {
+    animation: none;
+  }
+}
+
+/* ------------------------------------------------ marketing, second pass */
+
+.feature-card-title,
+.next-step-card-title,
+#capabilities-title {
+  font-family: var(--dx-serif);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+.feature-card-title {
+  font-size: clamp(1.9rem, 3vw, 2.7rem);
+  line-height: 1.05;
+  color: var(--foreground);
+}
+
+#capabilities-title {
+  font-size: clamp(2rem, 3.6vw, 3rem);
+  line-height: 1.05;
+}
+
+.next-step-card-title {
+  font-size: 2rem;
+  color: #f7f6f2;
+}
+
+/* Feature visuals: warm paper stages with a fine grid, not blue-gray. */
+.feature-visual.is-teal,
+.feature-visual.is-cyan,
+.feature-visual.is-violet {
+  background:
+    linear-gradient(to right, rgba(28, 24, 16, 0.045) 1px, transparent 1px) 0 0 / 28px 28px,
+    linear-gradient(to bottom, rgba(28, 24, 16, 0.045) 1px, transparent 1px) 0 0 / 28px 28px,
+    radial-gradient(70% 80% at 70% 20%, rgba(236, 106, 31, 0.1), transparent 70%),
+    #efede6;
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+
+.feature-visual.is-deep {
+  background:
+    radial-gradient(70% 80% at 80% 0%, rgba(236, 106, 31, 0.16), transparent 60%),
+    #0b1530;
+}
+
+:root[data-theme="dark"] .feature-visual.is-teal,
+:root[data-theme="dark"] .feature-visual.is-cyan,
+:root[data-theme="dark"] .feature-visual.is-violet {
+  background:
+    linear-gradient(to right, rgba(255, 255, 255, 0.04) 1px, transparent 1px) 0 0 / 28px 28px,
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 1px, transparent 1px) 0 0 / 28px 28px,
+    #171a22;
+}
+
+.mock-step,
+.mock-card,
+.mock-float-card {
+  box-shadow:
+    0 1px 2px rgba(28, 24, 16, 0.06),
+    0 10px 24px -12px rgba(28, 24, 16, 0.22);
+}
