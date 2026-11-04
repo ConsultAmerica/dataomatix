@@ -1,0 +1,139 @@
+/* Floating pipeline motifs behind PageHero copy — quiet, brand-colored,
+   and still under reduced motion. */
+
+.layer {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  z-index: 0;
+}
+
+.motif {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 1.15rem;
+  background: linear-gradient(160deg, rgba(238, 245, 255, 0.14), rgba(255, 241, 227, 0.1));
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08);
+  opacity: 0.42;
+  filter: saturate(0.85) brightness(1.15);
+}
+
+.m1 {
+  top: 14%;
+  right: 8%;
+  width: 4.5rem;
+  height: 4.5rem;
+  animation: driftA 14s ease-in-out infinite alternate;
+}
+
+.m2 {
+  top: 58%;
+  right: 22%;
+  width: 3.75rem;
+  height: 3.75rem;
+  animation: driftB 16s ease-in-out infinite alternate;
+}
+
+.m3 {
+  bottom: 16%;
+  left: 6%;
+  width: 4.25rem;
+  height: 4.25rem;
+  animation: driftA 15s ease-in-out 1s infinite alternate;
+}
+
+.m4 {
+  top: 22%;
+  left: 12%;
+  width: 3.5rem;
+  height: 3.5rem;
+  opacity: 0.32;
+  animation: driftB 18s ease-in-out 0.5s infinite alternate;
+}
+
+.m5 {
+  bottom: 22%;
+  right: 38%;
+  width: 3.75rem;
+  height: 3.75rem;
+  opacity: 0.36;
+  animation: driftA 17s ease-in-out 1.4s infinite alternate;
+}
+
+@keyframes driftA {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(0, -10px, 0);
+  }
+}
+
+@keyframes driftB {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(8px, -6px, 0);
+  }
+}
+
+.compact .m4,
+.compact .m5 {
+  display: none;
+}
+
+.compact .m1 {
+  width: 3.5rem;
+  height: 3.5rem;
+  top: 12%;
+  right: 6%;
+  opacity: 0.34;
+}
+
+.compact .m2 {
+  width: 3rem;
+  height: 3rem;
+  top: auto;
+  bottom: 18%;
+  right: 18%;
+  opacity: 0.3;
+}
+
+.compact .m3 {
+  width: 3.25rem;
+  height: 3.25rem;
+  bottom: 14%;
+  left: 5%;
+  opacity: 0.3;
+}
+
+@media (max-width: 767px) {
+  .m2,
+  .m4,
+  .m5 {
+    display: none;
+  }
+
+  .m1 {
+    right: 4%;
+    top: 10%;
+    opacity: 0.3;
+  }
+
+  .m3 {
+    left: auto;
+    right: 10%;
+    bottom: 10%;
+    opacity: 0.28;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .motif {
+    animation: none !important;
+  }
+}

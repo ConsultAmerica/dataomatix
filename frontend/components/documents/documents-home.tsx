@@ -294,9 +294,16 @@ export default function DocumentsHome() {
     if (sortBy !== "uploaded_at") next.set("sort", sortBy);
     if (sortDir !== "desc") next.set("dir", sortDir);
     if (offset > 0) next.set("offset", String(offset));
-    const base = `/documents/${documentId}${suffix ? `/${suffix}` : ""}`;
+    // "Review" opens the workspace's review view (approve, correct, reject), not the
+    // earlier review page — the same place the Review queue opens.
+    const review = suffix === "review";
+    const base = `/documents/${documentId}${suffix && !review ? `/${suffix}` : ""}`;
+    const own = new URLSearchParams();
+    if (review) own.set("tab", "business");
     const qs = next.toString();
-    return qs ? `${base}?return=${encodeURIComponent(qs)}` : base;
+    if (qs) own.set("return", qs);
+    const query = own.toString();
+    return query ? `${base}?${query}` : base;
   }
 
   /** The … menu of one row or card. */
@@ -511,92 +518,93 @@ export default function DocumentsHome() {
       )}
 
       <div className="data-panel overflow-hidden">
-      <div
-        className="flex flex-wrap items-center gap-2 border-b border-border px-3 py-2.5"
-        role="search"
-        aria-label="Document filters"
-        data-testid="documents-toolbar"
-      >
-        <label className="relative min-w-0 basis-full sm:min-w-[14rem] sm:flex-1 sm:basis-auto">
-          <span className="sr-only">Search documents</span>
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
-          <input
-            type="search"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder={DOCUMENT_SEARCH_PLACEHOLDER}
-            title="Matches file names, contract numbers and titles, supplier / customer names, and extracted page text"
-            className="control w-full pl-9"
+      <div className="border-b border-border px-3 py-3" role="search" aria-label="Document filters" data-testid="documents-toolbar">
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="relative min-w-0 flex-1 basis-full sm:basis-auto">
+            <span className="sr-only">Search documents</span>
+            <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
+            <input
+              type="search"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder={DOCUMENT_SEARCH_PLACEHOLDER}
+              title="Matches file names, contract numbers and titles, supplier / customer names, and extracted page text"
+              className="control h-10 w-full rounded-xl pl-10 text-[15px]"
+            />
+          </label>
+          <div className="ml-auto flex items-center gap-2">
+            {view === "table" && <DensityToggle value={density} onChange={setDensity} />}
+            <ViewToggle value={view} onChange={setView} />
+          </div>
+        </div>
+        <div className="mt-2.5 flex flex-wrap items-center gap-2">
+          <span className="text-xs font-semibold uppercase tracking-[0.08em] text-text-muted">Filter</span>
+          <FilterSelect
+            label="Document Type"
+            value={family}
+            onChange={(value) => {
+              setFamily(value);
+              setOffset(0);
+            }}
+            options={[
+              { id: "", label: "All types" },
+              ...Object.entries(FAMILY_LABELS)
+                .filter(([id]) => !["unknown", "generic_business"].includes(id))
+                .map(([id, label]) => ({ id, label })),
+              { id: "generic_business", label: "Generic Document" },
+            ]}
           />
-        </label>
 
-        <FilterSelect
-          label="Document Type"
-          value={family}
-          onChange={(value) => {
-            setFamily(value);
-            setOffset(0);
-          }}
-          options={[
-            { id: "", label: "All types" },
-            ...Object.entries(FAMILY_LABELS)
-              .filter(([id]) => !["unknown", "generic_business"].includes(id))
-              .map(([id, label]) => ({ id, label })),
-            { id: "generic_business", label: "Generic Document" },
-          ]}
-        />
+          <FilterSelect
+            label="Profile"
+            value={profileId}
+            onChange={(value) => {
+              setProfileId(value);
+              setOffset(0);
+            }}
+            options={PROFILE_OPTIONS}
+          />
 
-        <FilterSelect
-          label="Profile"
-          value={profileId}
-          onChange={(value) => {
-            setProfileId(value);
-            setOffset(0);
-          }}
-          options={PROFILE_OPTIONS}
-        />
+          <FilterSelect
+            label="Lifecycle"
+            value={lifecycle}
+            onChange={(value) => {
+              setLifecycle(value);
+              setOffset(0);
+            }}
+            options={LIFECYCLE_FILTERS.map((option) => ({ id: option.id, label: option.label }))}
+          />
 
-        <FilterSelect
-          label="Lifecycle"
-          value={lifecycle}
-          onChange={(value) => {
-            setLifecycle(value);
-            setOffset(0);
-          }}
-          options={LIFECYCLE_FILTERS.map((option) => ({ id: option.id, label: option.label }))}
-        />
+          {filtersActive && (
+            <button
+              type="button"
+              onClick={clearFilters}
+              className="inline-flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-[13px] font-medium text-[#1565d8] hover:bg-[#e8f1fe]"
+            >
+              <FilterX className="h-3.5 w-3.5" aria-hidden="true" />
+              Clear Filters
+            </button>
+          )}
 
-        <FilterSelect
-          label="Sort"
-          defaultValue="uploaded_at:desc"
-          widthClass="sm:w-[10.5rem]"
-          value={`${sortBy}:${sortDir}`}
-          onChange={(value) => {
-            const [by, dir] = value.split(":") as [DocumentSortBy, DocumentSortDir];
-            setSortBy(by);
-            setSortDir(dir);
-            setOffset(0);
-          }}
-          options={[
-            { id: "uploaded_at:desc", label: "Uploaded (newest)" },
-            { id: "uploaded_at:asc", label: "Uploaded (oldest)" },
-          ]}
-        />
-
-        {filtersActive && (
-          <button
-            type="button"
-            onClick={clearFilters}
-            className="inline-flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-[13px] font-medium text-text-secondary hover:bg-surface-soft hover:text-foreground"
-          >
-            <FilterX className="h-3.5 w-3.5" aria-hidden="true" />
-            Clear Filters
-          </button>
-        )}
-
-        <div className="ml-auto flex items-center gap-2">
-          {view === "table" && <DensityToggle value={density} onChange={setDensity} />}
-          <ViewToggle value={view} onChange={setView} />
+          <div className="ml-auto flex w-full items-center justify-end gap-2 sm:w-auto">
+            <span className="text-xs text-text-muted">Sort</span>
+            <FilterSelect
+              label="Sort"
+              defaultValue="uploaded_at:desc"
+              widthClass="sm:w-[10.5rem]"
+              value={`${sortBy}:${sortDir}`}
+              onChange={(value) => {
+                const [by, dir] = value.split(":") as [DocumentSortBy, DocumentSortDir];
+                setSortBy(by);
+                setSortDir(dir);
+                setOffset(0);
+              }}
+              options={[
+                { id: "uploaded_at:desc", label: "Uploaded (newest)" },
+                { id: "uploaded_at:asc", label: "Uploaded (oldest)" },
+              ]}
+            />
+          </div>
         </div>
       </div>
 
@@ -1057,7 +1065,7 @@ function FilterSelect({
         aria-label={label}
         title={label}
         data-active={value !== defaultValue}
-        className={`control w-full ${widthClass}`}
+        className={`control h-8 w-full rounded-lg py-0 text-[13px] data-[active=true]:border-[#1565d8] data-[active=true]:bg-[#e8f1fe] data-[active=true]:font-medium data-[active=true]:text-[#0d47a8] ${widthClass}`}
       >
         {options.map((option) => (
           <option key={option.id || "all"} value={option.id}>

@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 
+import PipelineAtmosphere from "@/components/brand/pipeline-atmosphere";
+
 interface PageHeroProps {
   eyebrow?: string;
   /** Hero-level brand signal (product name). Prefer over a small eyebrow on marketing. */
@@ -14,6 +16,8 @@ interface PageHeroProps {
   compact?: boolean;
   /** Marketing home: quieter first viewport (hides preview earlier). */
   marketing?: boolean;
+  /** Hide floating extract/process/transform/analyze/report motifs. */
+  quietAtmosphere?: boolean;
 }
 
 export default function PageHero({
@@ -26,6 +30,7 @@ export default function PageHero({
   specialization,
   compact = false,
   marketing = false,
+  quietAtmosphere = false,
 }: PageHeroProps) {
   return (
     <section
@@ -38,6 +43,7 @@ export default function PageHero({
         .join(" ")}
     >
       <div className="page-hero-atmosphere" aria-hidden="true" />
+      {!quietAtmosphere && <PipelineAtmosphere compact={compact} />}
       <div
         className={[
           "page-hero-inner",

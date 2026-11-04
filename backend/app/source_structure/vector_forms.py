@@ -68,7 +68,8 @@ _TRAILING_PAREN = re.compile(r"\s*\([^()]*\)?\s*$")
 # A selection mark typed into a box.
 _MARKS = {"X", "x", "✓", "✔", "☒"}
 # "7. ISSUED BY", "12B. CALENDAR DAYS", "12 A. THE CONTRACTOR …"
-_ITEM = re.compile(r"^(?P<code>\d{1,3}(?:\s?[A-Z])?)[.)]?\s+(?P<name>\S.*)$")
+# The number ends in "." or ")" — "10 CALENDAR DAYS (%)" is a heading, not item 10.
+_ITEM = re.compile(r"^(?P<code>\d{1,3}(?:\s?[A-Z])?)[.)]\s+(?P<name>\S.*)$")
 # "A. NAME", "B. TELEPHONE NO."
 _LETTER = re.compile(r"^(?P<code>[A-Z])[.)]\s+(?P<name>\S.*)$")
 
@@ -164,8 +165,36 @@ def form_boxes(page, h=None, v=None) -> list[BBox] | None:
     boxes = grid.form_boxes()
     if not boxes:
         return None
-    cuts = _merge_slivers([cut for box in boxes for cut in _cut(box, h, v)])
+    cuts = [cut for box in boxes for cut in _cut(box, h, v)]
+    cuts = _merge_slivers(_merge_unruled(cuts, v))
     return sorted(cuts, key=lambda b: (round(b[1]), b[0]))
+
+
+def _merge_unruled(boxes: list[BBox], v) -> list[BBox]:
+    """Side-by-side boxes of the same height with no rule between them are
+    one box: the grid divides a whole row at a divider that only runs
+    under a caption ("B. TELEPHONE" over AREA CODE | NUMBER | EXT)."""
+
+    boxes = list(boxes)
+    while True:
+        for a in boxes:
+            b = next(
+                (b for b in boxes if b is not a and abs(b[0] - a[2]) <= _NEAR
+                 and abs(b[1] - a[1]) <= _NEAR and abs(b[3] - a[3]) <= _NEAR),
+                None,
+            )
+            if b is None:
+                continue
+            ruled = sum(
+                max(0.0, min(y1, a[3]) - max(y0, a[1])) for x, y0, y1 in v if abs(x - a[2]) <= _NEAR
+            )
+            if ruled >= 0.6 * (a[3] - a[1]):
+                continue
+            boxes.remove(a)
+            boxes[boxes.index(b)] = (a[0], min(a[1], b[1]), b[2], max(a[3], b[3]))
+            break
+        else:
+            return boxes
 
 
 def _stack_slivers(boxes: list[BBox]) -> list[BBox]:
@@ -227,6 +256,26 @@ def _cut(box: BBox, h, v, depth: int = 0) -> list[BBox]:
             return _cut((x0, y0, x1, y), h, v, depth + 1) + _cut((x0, y, x1, y1), h, v, depth + 1)
     for x, ry0, ry1 in sorted(v):
         if x0 + _MIN_BOX < x < x1 - _MIN_BOX and ry0 <= y0 + _NEAR and ry1 >= y1 - _NEAR:
+            return _cut((x0, y0, x, y1), h, v, depth + 1) + _cut((x, y0, x1, y1), h, v, depth + 1)
+    # A rule that starts (or ends) inside the box and runs to its far side
+    # marks a corner. With a short rule closing it ("CODE [ ]" in "7.
+    # ISSUED BY"), only that corner is a box of its own and the box stays
+    # whole around it (its reader leaves the corner's words out). With none
+    # (a caption strip over sub-boxes), the box divides there.
+    for rx0, y, rx1, _ in sorted(h, key=lambda r: r[1]):
+        if not (y0 + _MIN_BOX < y < y1 - _MIN_BOX):
+            continue
+        for x in (rx0, rx1):
+            reaches = rx1 >= x1 - _NEAR if x == rx0 else rx0 <= x0 + _NEAR
+            if not (x0 + _MIN_BOX < x < x1 - _MIN_BOX and reaches):
+                continue
+            side = (x, x1) if x == rx0 else (x0, x)
+            above = any(abs(vx - x) <= _NEAR and vy0 <= y0 + _NEAR and abs(vy1 - y) <= _NEAR for vx, vy0, vy1 in v)
+            below = any(abs(vx - x) <= _NEAR and abs(vy0 - y) <= _NEAR and vy1 >= y1 - _NEAR for vx, vy0, vy1 in v)
+            if above:
+                return [box, (side[0], y0, side[1], y)]
+            if below:
+                return [box, (side[0], y, side[1], y1)]
             return _cut((x0, y0, x, y1), h, v, depth + 1) + _cut((x, y0, x1, y1), h, v, depth + 1)
     return [box]
 
@@ -371,7 +420,7 @@ def _read(lines: list[Line], rect: BBox, caption_size: float, sized: bool, taken
         # On the caption line, typed words come last ("CODE  N40192"); a
         # number inside the caption's sentence ("ITEM 28 OR 29") is printed.
         typed_from = len(words)
-        while typed_from > 1 and _typed_word(words[typed_from - 1].text, typed_from - 1):
+        while typed_from > 0 and _typed_word(words[typed_from - 1].text, typed_from - 1):
             typed_from -= 1
         for position, w in enumerate(words):
             if w.text in _MARKS:
@@ -402,9 +451,11 @@ def _read(lines: list[Line], rect: BBox, caption_size: float, sized: bool, taken
     for run in captions[1:]:
         previous = box.subs[-1] if box.subs else head
         prev_line = (previous.extra or [previous.run])[-1].line
+        open_caption = not previous.text.rstrip().endswith((":", ".")) or previous is head and not head.text.rstrip().endswith(":")
         wraps = (
             run.text.startswith("(")
-            or (run.line == prev_line + 1 and abs(run.x0 - previous.run.x0) <= 4 and not _LETTER.match(run.text))
+            or (run.line == prev_line + 1 and abs(run.x0 - previous.run.x0) <= 8 and not _LETTER.match(run.text)
+                and (abs(run.x0 - previous.run.x0) <= 4 or open_caption))
         )
         if wraps:
             previous.extra.append(run)
@@ -538,14 +589,22 @@ def read_vector_form(
     caption_size, sized = page_sizes(lines, rects)
     ticks = checkboxes(page)
     selections = {rect: _options(lines, rect, ticks) for rect in rects}
-    taken = {rect: frozenset(id(w) for o in selections[rect][0] for w in o.words + ([o.mark] if o.mark else [])) for rect in rects}
+    page_words = [w for line in lines for w in line.words]
+    taken = {
+        rect: frozenset(
+            [id(w) for o in selections[rect][0] for w in o.words + ([o.mark] if o.mark else [])]
+            + [id(w) for inner in rects if inner != rect and _inside(inner, rect)
+               for w in page_words if _inside((w.x0, w.y0, w.x1, w.y1), inner)]
+        )
+        for rect in rects
+    }
     boxes = [(rect, _read(lines, rect, caption_size, sized, taken[rect])) for rect in rects]
     # Rules alone don't make a form (a ruled table under a title row splits
     # its rows differently too): a form numbers its boxes.
     if sum(1 for _, box in boxes if box is not None and box.item is not None) < _MIN_NUMBERED:
         return None
     result = VectorForm(fields=[], tables=[], regions=[], frame=_union(rects))
-    page_words = [w for line in lines for w in line.words]
+    _values_beside_captions(boxes)
     table_rects = _form_tables(ids, page_number, boxes, extraction_method, page_text, result)
     with_options = {rect for rect, (options, _) in selections.items() if options}
     _form_fields(ids, page_number, [(r, b) for r, b in boxes if b is not None and r not in table_rects], extraction_method, result,
@@ -560,6 +619,24 @@ def read_vector_form(
             for seg in box.segments:
                 seg.used = True
     return result if result.fields or result.tables else None
+
+
+def _values_beside_captions(boxes: list[tuple[BBox, _Box | None]]) -> None:
+    """A box holding only a typed value belongs to the caption printed just
+    left of it on its line, across the rule ("CODE  [47QRCA]")."""
+
+    for rect, box in boxes:
+        if box is None or box.head is not None or not box.loose:
+            continue
+        line_y = box.loose[0].words[0].cy
+        owners = [
+            caption for r, other in boxes if other is not None and other.head is not None and r != rect
+            for caption in [other.head] + other.subs
+            if abs(caption.run.words[0].cy - line_y) <= 3 and 0 <= rect[0] - caption.run.x1 <= 25
+        ]
+        if owners:
+            max(owners, key=lambda c: c.run.x1).values.extend(box.loose)
+            box.loose = []
 
 
 def _inside(rect: BBox, outer: BBox) -> bool:
@@ -580,9 +657,32 @@ def _form_fields(ids: _Ids, page_number: int, boxes: list[tuple[BBox, _Box]], ex
             parent_rect, parent = max(row, key=lambda rb: rb[0][0])
             if not parent.head.values and not parent.subs:
                 parents[rect] = (_code(parent.item), parent.item.group("name"))
+    # Boxes ruled right under a lettered caption that holds no value
+    # (AREA CODE | NUMBER | EXT under "B. TELEPHONE") take its letter and
+    # item; the caption box itself isn't repeated as an empty field.
+    under: dict[BBox, tuple[str, str, str]] = {}
+    captions_only: set[BBox] = set()
+    for rect, box in boxes:
+        if rect not in parents or box.head.values or box.subs:
+            continue
+        letter = box.letter.group("code")
+        below = [
+            (r, b) for r, b in boxes
+            if b.head is not None and b.item is None and b.letter is None and abs(r[1] - rect[3]) <= _NEAR
+            and r[0] >= rect[0] - _NEAR and r[2] <= rect[2] + _NEAR
+        ]
+        if below:
+            captions_only.add(rect)
+            for r, _ in below:
+                under[r] = (*parents[rect], letter)
     heading_parents = {p for p in parents.values()}
     for rect, box in boxes:
-        if box.head is None:
+        if box.head is None or rect in captions_only:
+            continue
+        if rect in under:
+            parent_code, parent_name, letter = under[rect]
+            _emit(ids, page_number, rect, box.head, extraction_method, result,
+                  code=parent_code, label=box.head.text, parent=parent_name, sub=letter)
             continue
         item = box.item
         code = _code(item) if item else None

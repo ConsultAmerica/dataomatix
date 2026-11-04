@@ -1,6 +1,5 @@
 "use client";
 
-import OriginalStructureView from "@/components/original-structure/original-structure-view";
 import { itemId, linkAnchors, linkByEvidence, useRecordSelection } from "@/lib/record-selection";
 import { FileSearch, MoreHorizontal, Search, WrapText } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -55,8 +54,6 @@ interface WorkspaceProps {
 }
 
 const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
-/** The first tab: every field and table as the document prints them. */
-const ORIGINAL_STRUCTURE_TAB = "original_structure";
 
 /** Business display only: "2026-09-23" reads "Sep 23, 2026". The stored
  * and exported value stays ISO. */
@@ -84,9 +81,9 @@ export default function PresentationWorkspace({
   const tabKey = `dx-presentation-tab:${documentId}`;
   const [active, setActiveState] = useState<string>(() => {
     try {
-      return window.sessionStorage.getItem(tabKey) ?? ORIGINAL_STRUCTURE_TAB;
+      return window.sessionStorage.getItem(tabKey) ?? "";
     } catch {
-      return ORIGINAL_STRUCTURE_TAB;
+      return "";
     }
   });
   const setActive = (id: string) => {
@@ -97,7 +94,6 @@ export default function PresentationWorkspace({
       // Storage unavailable: the tab just isn't remembered.
     }
   };
-  const originalActive = active === ORIGINAL_STRUCTURE_TAB;
   const [target, setTarget] = useState<EvidenceTarget | null>(null);
   const [showTechnical, setShowTechnical] = useState(false);
   const technicalRef = useRef<HTMLDivElement>(null);
@@ -214,8 +210,8 @@ export default function PresentationWorkspace({
 
       {(
         <div role="tablist" aria-label="Document sections" className="flex flex-wrap gap-1.5">
-          {[{ id: ORIGINAL_STRUCTURE_TAB, label: "Original File" }, ...manifest.groups].map((group) => {
-            const selected = group.id === ORIGINAL_STRUCTURE_TAB ? originalActive : !originalActive && current?.id === group.id;
+          {manifest.groups.map((group) => {
+            const selected = current?.id === group.id;
             return (
               <button
                 key={group.id}
@@ -258,15 +254,7 @@ export default function PresentationWorkspace({
         />
       )}
 
-      {originalActive ? (
-        <OriginalStructureView
-          documentId={documentId}
-          documentName={workbook.document_filename}
-          pageCount={Math.max(1, workbook.processing_metadata.page_count ?? 1)}
-          stagingProfileId={workbook.profile.profile_id}
-          onViewSource={onOpenSource}
-        />
-      ) : current ? (
+      {current ? (
         <GroupBody
           group={current}
           documentId={documentId}

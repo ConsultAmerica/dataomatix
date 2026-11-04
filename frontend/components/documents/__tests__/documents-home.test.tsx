@@ -275,7 +275,8 @@ describe("Documents repository (RC2-02)", { timeout: 15_000 }, () => {
     await screen.findByText("05_multipage_stress.pdf");
     fireEvent.click(screen.getByRole("button", { name: "Actions for 05_multipage_stress.pdf" }));
     fireEvent.click(screen.getByRole("menuitem", { name: "Review" }));
-    expect(push).toHaveBeenCalledWith(expect.stringMatching(/^\/documents\/d1\/review/));
+    // Review opens the workspace's review view, not the earlier review page.
+    expect(push).toHaveBeenCalledWith(expect.stringMatching(/^\/documents\/d1\?tab=business$/));
     fireEvent.click(screen.getByRole("button", { name: "Actions for 05_multipage_stress.pdf" }));
     fireEvent.click(screen.getByRole("menuitem", { name: "Export" }));
     // Export downloads the Original File workbook, not the staging datasets.
@@ -394,7 +395,7 @@ describe("Documents repository (RC2-02)", { timeout: 15_000 }, () => {
     expect(within(drawer).getByText("J. Rivera")).toBeTruthy();
     expect(within(drawer).getByText("Acme Federal LLC")).toBeTruthy();
     expect(within(drawer).getByRole("link", { name: "Open workspace" })).toHaveAttribute("href", "/documents/c1");
-    expect(within(drawer).getByRole("link", { name: "Review" })).toHaveAttribute("href", "/documents/c1/review");
+    expect(within(drawer).getByRole("link", { name: "Review" })).toHaveAttribute("href", "/documents/c1?tab=business");
     expect(push).not.toHaveBeenCalled();
     fireEvent.keyDown(document, { key: "Escape" });
     expect(screen.queryByRole("dialog")).toBeNull();

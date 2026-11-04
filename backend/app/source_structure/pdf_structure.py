@@ -930,10 +930,16 @@ def _caption_row_fields(
     return fields
 
 
-def _same_columns(a: list, b: list, slack: float = 15.0) -> bool:
-    """Two column layouts with the same columns at the same places."""
+def _same_columns(a: list, b: list) -> bool:
+    """Two column layouts with the same columns at the same places: each
+    column overlaps its counterpart over most of the narrower one (a
+    centred heading starts further in than the text column it sits in)."""
 
-    return len(a) == len(b) and all(abs(x.x0 - y.x0) <= slack for x, y in zip(a, b))
+    def overlap(x, y) -> bool:
+        shared = min(x.x1, y.x1) - max(x.x0, y.x0)
+        return shared > 0.5 * min(x.x1 - x.x0, y.x1 - y.x0)
+
+    return len(a) == len(b) and all(overlap(x, y) for x, y in zip(a, b))
 
 
 _SENTENCE_END = re.compile(r"[.;:!?)\]]$")
@@ -2304,6 +2310,13 @@ def _extract_structure(
                 page_text, tuple(bbox),
             )
             table.caption = table.caption or caption
+            one_row = "one-row segmentation artifact without form key/value evidence"
+            if table.acceptance == "rejected" and table.reasons == [one_row] and header_ok and texts[1:] and all(
+                all(cell for cell in row) for row in texts[1:]
+            ):
+                # Every cell drawn, a printed header over a full row: a real
+                # one-row table ("Subject | FAR case"), not a stray grid.
+                table.acceptance, table.reasons = "accepted", []
             result.tables.append(table)
             result.regions.extend(regions)
             if table.acceptance == "accepted":
@@ -2384,11 +2397,16 @@ def _extract_structure(
             page_text,
             _union([s.bbox for line in members for s in line.free_segments]),
         )
-        prose = header_cells is None and _narrative_columns([[_cell_text(c) for c in row] for row in body])
-        aligned.append((bands, table, regions, members, header_cells is None, prose))
+        texts = [[_cell_text(c) for c in row] for row in body]
+        prose = header_cells is None and _narrative_columns(texts)
+        cells = [t for row in texts for t in row if t]
+        figures = sum(1 for t in cells if is_numeric_value(t)) >= 0.3 * max(1, len(cells))
+        aligned.append((bands, table, regions, members, header_cells is None and not figures, prose))
     prose_columns = [bands for bands, *_, prose in aligned if prose]
-    for bands, table, regions, members, headerless, prose in aligned:
-        if prose or (headerless and any(_same_columns(bands, other) for other in prose_columns)):
+    for bands, table, regions, members, wordy, prose in aligned:
+        # A strip of words in the prose columns is prose; one of figures
+        # ("Chile FTA | 105,767 | 6,683,000") is a table wherever it sits.
+        if prose or (wordy and any(_same_columns(bands, other) for other in prose_columns)):
             table.acceptance = "rejected"
             table.reasons.append("narrative_columns")
             regions = []

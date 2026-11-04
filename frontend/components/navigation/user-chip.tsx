@@ -45,7 +45,7 @@ export default function UserChip({ showRole = true }: { showRole?: boolean }) {
 
   return (
     <span
-      className="inline-flex shrink-0 items-center gap-2 rounded-full border border-white/10 py-0.5 pl-0.5 pr-0.5 text-[11px] text-white/85 2xl:pr-2.5"
+      className="inline-flex shrink-0 items-center gap-2 rounded-full border border-border py-0.5 pl-0.5 pr-0.5 text-[11px] text-text-secondary 2xl:pr-2.5"
       title={actor?.email ? `${label} — ${actor.email}` : label}
       data-testid="user-chip"
     >

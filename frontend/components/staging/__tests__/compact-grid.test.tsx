@@ -154,6 +154,9 @@ describe("compact grid (grid_fields)", () => {
   it("shows every column of a dataset without grid fields; evidence lives in the record drawer", () => {
     const dataset = { ...farDataset(), grid_fields: [], compact: false };
     render(<StagingDatasetTable dataset={dataset} documentId="doc-far" />);
+    // No record fills Actual Section Text: hidden until asked for, and said so.
+    expect(screen.getAllByRole("columnheader").map((th) => th.textContent?.trim())).not.toContain("Actual Section Text");
+    fireEvent.click(screen.getByTestId("empty-columns"));
     const headers = screen.getAllByRole("columnheader").map((th) => th.textContent?.trim());
     expect(headers).toContain("Actual Section Text");
     // No technical columns in the business grid.

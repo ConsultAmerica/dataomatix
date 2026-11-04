@@ -120,7 +120,9 @@ def _header_is_sentence_fragment(header: str) -> bool:
     if _looks_like_form_header(text) and _word_count(text) <= 6 and len(text) <= 40:
         return False
     lower = text.lower()
-    if any(marker in lower for marker in PROSE_MARKERS):
+    # A legal phrase marks prose in a sentence-length header; in a short
+    # label ("FAR case", "Section No.") it is just a word.
+    if _word_count(text) >= 4 and any(marker in lower for marker in PROSE_MARKERS):
         return True
     if _LEADING_LOWER_RE.match(text):
         return True

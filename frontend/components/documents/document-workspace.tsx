@@ -3,10 +3,10 @@
 import Link from "next/link";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ChevronDown, ClipboardCheck, Columns2, RefreshCw, Send } from "lucide-react";
+import { ChevronDown, Columns2, RefreshCw } from "lucide-react";
 
 import { useDocumentChrome } from "@/components/layout/document-chrome-context";
-import OracleIntegrationPanel from "@/components/oracle-integration-panel";
+import CapabilityNav from "@/components/documents/capability-nav";
 import RelatedDocumentsSwitcher from "@/components/documents/related-documents-switcher";
 import DocumentAuditTrail from "@/components/review/document-audit-trail";
 import DocumentViewer from "@/components/viewers/document-viewer";
@@ -21,7 +21,11 @@ import DocumentObligationsPanel from "@/components/obligations/document-obligati
 import ExpiryTag from "@/components/documents/expiry-tag";
 import ClassificationTag from "@/components/classification/classification-tag";
 import VerificationWorkspace, { type WorkspaceView } from "@/components/verification/verification-workspace";
+
+/** The views a ?tab= link may open. */
+const WORKSPACE_VIEW_IDS = ["business", "advanced", "tables", "validation", "oracle", "history", "summary", "smart"] as const;
 import { downloadWorkspaceExport } from "@/lib/verification";
+import { downloadExtractedData } from "@/lib/clause-outline";
 import SmartWorkspace from "@/components/smart-view/smart-workspace";
 import InvoiceRecognitionPanel from "@/components/documents/invoice-recognition-panel";
 import DocumentPlaybookPanel from "@/components/playbook/document-playbook-panel";
@@ -133,7 +137,9 @@ export default function DocumentWorkspace({ documentId }: { documentId: string }
   const [exportError, setExportError] = useState("");
   const [exportBusy, setExportBusy] = useState(false);
   const [exportNotice, setExportNotice] = useState("");
-  const [showOracle, setShowOracle] = useState(false);
+  // Oracle preview lives in the Oracle / Mapping tab; a request (Export menu,
+  // ?panel=oracle) opens that tab with the preview showing.
+  const [oracleRequest, setOracleRequest] = useState(0);
   const [notice, setNotice] = useState("");
   const [reprocessing, setReprocessing] = useState(false);
   const [activeDataset, setActiveDataset] = useState("");
@@ -152,13 +158,15 @@ export default function DocumentWorkspace({ documentId }: { documentId: string }
   // Split view: the original document stays open on the left while the
   // structured data is read on the right; a value's source jumps it there.
   const [splitPref, setSplitPref] = useBrowserPreference<"on" | "off">("dx-workspace-split", ["on", "off"], "off");
-  // The verification tabs (Original Structure first, Summary last), and
+  // The verification tabs (Smart Review first, Summary last), and
   // two more views on the same records: Smart View and Advanced Grid.
-  const [viewMode, setViewMode] = useBrowserPreference<WorkspaceView>(
+  const [storedView, setStoredView] = useBrowserPreference<WorkspaceView>(
     "dx-workspace-mode",
-    ["original", "business", "advanced", "tables", "validation", "oracle", "history", "summary", "smart"],
-    "original",
+    ["business", "tables", "validation", "oracle"],
+    "business",
   );
+  // The tab picked while this document is open (the stored one applies to the next).
+  const [chosenView, setChosenView] = useState<{ documentId: string; view: WorkspaceView } | null>(null);
   const split = splitPref === "on";
   const [historyOpen, setHistoryOpen] = useState(false);
   const selectionStore = useSelectionStore();
@@ -195,9 +203,10 @@ export default function DocumentWorkspace({ documentId }: { documentId: string }
 
   useEffect(() => {
     if (searchParams.get("panel") === "oracle") {
-      setShowOracle(true);
+      setChosenView({ documentId, view: "oracle" });
+      setOracleRequest((count) => count + 1);
     }
-  }, [searchParams]);
+  }, [searchParams, documentId]);
 
   useEffect(() => {
     if (!exportOpen) return;
@@ -288,6 +297,17 @@ export default function DocumentWorkspace({ documentId }: { documentId: string }
     return <p className="px-6 py-10 text-sm text-danger">{error || "Unable to open this document."}</p>;
   }
 
+  // A FAR Part opens on its FAR Data table (Advanced Grid → Results →
+  // Tables); other documents on the tab last used.
+  const farDocument = workbook.datasets.some((dataset) => dataset.dataset_id === "far_records");
+  // ?tab= opens a given view for this visit (Review links use ?tab=business).
+  const tabParam = searchParams.get("tab");
+  const linkedView = tabParam && (WORKSPACE_VIEW_IDS as readonly string[]).includes(tabParam) ? (tabParam as WorkspaceView) : null;
+  const viewMode: WorkspaceView = chosenView?.documentId === documentId ? chosenView.view : linkedView ?? (farDocument ? "advanced" : storedView);
+  const setViewMode = (view: WorkspaceView) => {
+    setChosenView({ documentId, view });
+    setStoredView(view);
+  };
   const profile = workbook.profile;
   const outcome = workbook.outcome;
   const qa = workbook.qa_summary;
@@ -356,11 +376,23 @@ export default function DocumentWorkspace({ documentId }: { documentId: string }
     );
   }
 
-  async function exportDocumentStructure(kind: "original" | "all_fields" | "json") {
-    const labels = { original: "Original File Excel", all_fields: "Original File CSV", json: "Structured JSON" };
+  /** Every section, paragraph and table with its full text; a document
+   * without numbered sections has its fields in the Original File export. */
+  async function exportFullDocument() {
+    const name = filename || workbook?.document_filename || "export";
     await runExport(
-      () => downloadWorkspaceExport(documentId, kind, filename || workbook?.document_filename || "export"),
-      `${labels[kind]} download started.`,
+      () => downloadExtractedData(documentId, name).catch((err: unknown) => {
+        if (err instanceof Error && err.message.includes("409")) return downloadWorkspaceExport(documentId, "original", name);
+        throw err;
+      }),
+      "Full document Excel download started.",
+    );
+  }
+
+  async function exportStructuredJson() {
+    await runExport(
+      () => downloadWorkspaceExport(documentId, "json", filename || workbook?.document_filename || "export"),
+      "Structured JSON download started.",
     );
   }
 
@@ -508,7 +540,8 @@ export default function DocumentWorkspace({ documentId }: { documentId: string }
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2" data-testid="workspace-actions">
-          <button
+          {/* Split view only changes the Advanced Grid; elsewhere the source pane is built in. */}
+          {viewMode === "advanced" && <button
             type="button"
             className={`btn-secondary h-9 px-3 py-0 text-sm ${split ? "border-primary/40 bg-primary/[0.06] text-primary" : ""}`}
             aria-pressed={split}
@@ -518,7 +551,7 @@ export default function DocumentWorkspace({ documentId }: { documentId: string }
           >
             <Columns2 className="h-3.5 w-3.5" aria-hidden="true" />
             Split view
-          </button>
+          </button>}
           <button
             type="button"
             disabled={reprocessing || docStatus === "processing"}
@@ -531,29 +564,7 @@ export default function DocumentWorkspace({ documentId }: { documentId: string }
             {docStatus === "processing" ? "Processing…" : reprocessing ? "Starting…" : "Reprocess"}
           </button>
           <DocumentActionsMenu documentId={documentId} />
-          <span className="mx-0.5 hidden h-6 w-px bg-border sm:block" aria-hidden="true" />
-          {/* Oracle: the payload preview and the field mapping, side by side. */}
-          <div className="inline-flex h-9 overflow-hidden rounded-[var(--radius-button)] border border-border bg-surface text-sm" role="group" aria-label="Oracle Fusion">
-            <button
-              type="button"
-              className={`inline-flex items-center gap-1.5 px-3 font-medium ${showOracle ? "bg-primary/[0.08] text-primary" : "text-foreground hover:bg-surface-soft"}`}
-              aria-pressed={showOracle}
-              onClick={() => setShowOracle((open) => !open)}
-              title="Preview the payload that would be sent to Oracle Fusion"
-              data-testid="toggle-oracle-panel"
-            >
-              <Send className="h-3.5 w-3.5" aria-hidden="true" />
-              Oracle
-            </button>
-            <Link
-              href={`/mapping/designer?document=${documentId}`}
-              className="inline-flex items-center border-l border-border px-3 font-medium text-foreground hover:bg-surface-soft"
-              title="Map this document's extracted fields to a registered Oracle Fusion target object"
-              data-testid="map-to-oracle"
-            >
-              Map fields
-            </Link>
-          </div>
+          {/* Oracle preview and field mapping: the Oracle / Mapping tab (one place for both). */}
           <div className="relative" ref={exportMenuRef}>
             <button
               type="button"
@@ -640,25 +651,28 @@ export default function DocumentWorkspace({ documentId }: { documentId: string }
                   )}
                 </div>
                 <p className="px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide text-text-secondary">
-                  Original File
+                  Full document
                 </p>
-                {(
-                  [
-                    ["original", "Excel → Original File"],
-                    ["all_fields", "CSV → Original File"],
-                    ["json", "Structured JSON"],
-                  ] as const
-                ).map(([kind, label]) => (
-                  <button
-                    key={kind}
-                    type="button"
-                    role="menuitem"
-                    className="block w-full px-3 py-1.5 pl-5 text-left text-sm hover:bg-surface-soft"
-                    onClick={() => void exportDocumentStructure(kind)}
-                  >
-                    {label}
-                  </button>
-                ))}
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="block w-full px-3 py-1.5 pl-5 text-left text-sm hover:bg-surface-soft"
+                  onClick={() => void exportFullDocument()}
+                  data-testid="export-full-document"
+                >
+                  Excel → All sections &amp; full text
+                  <span className="block text-[11px] text-text-muted">
+                    Every section, paragraph and table with its complete text; no table of contents
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="block w-full px-3 py-1.5 pl-5 text-left text-sm hover:bg-surface-soft"
+                  onClick={() => void exportStructuredJson()}
+                >
+                  Structured JSON
+                </button>
                 <div className="my-1 border-t border-border" />
                 <p className="px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide text-text-secondary">
                   Advanced Grid data — Export All
@@ -740,7 +754,8 @@ export default function DocumentWorkspace({ documentId }: { documentId: string }
                   className="block w-full px-3 py-1.5 text-left text-sm hover:bg-surface-soft"
                   onClick={() => {
                     setExportOpen(false);
-                    setShowOracle(true);
+                    setViewMode("oracle");
+                    setOracleRequest((count) => count + 1);
                   }}
                 >
                   Open Oracle preview / send…
@@ -764,24 +779,11 @@ export default function DocumentWorkspace({ documentId }: { documentId: string }
               )}
             </div>
           </div>
-          <Link
-            href={`/documents/${documentId}/review`}
-            className="btn-secondary h-9 px-3 py-0 text-sm"
-            title="Check the document's metadata against the source"
-            data-testid="open-metadata-review"
-          >
-            Metadata review
-          </Link>
-          <Link
-            href={`/documents/${documentId}/form`}
-            className="btn-primary h-9 px-3.5 py-0 text-sm"
-            data-testid="open-review-form"
-            title="The review form generated from this document's schema"
-          >
-            <ClipboardCheck className="h-3.5 w-3.5" aria-hidden="true" />
-            Review form
-          </Link>
         </div>
+      </div>
+
+      <div className="mt-4 border-b border-border">
+        <CapabilityNav documentId={documentId} active="extract" />
       </div>
 
       {notice && (
@@ -803,14 +805,6 @@ export default function DocumentWorkspace({ documentId }: { documentId: string }
         </div>
       )}
 
-      {showOracle && (
-        <div className="mt-4" data-testid="workspace-oracle-section">
-          <OracleIntegrationPanel
-            documentId={documentId}
-            documentFilename={filename || workbook.document_filename}
-          />
-        </div>
-      )}
 
 
       {/* The Export menu opens this in both views (Smart View and Advanced
@@ -836,6 +830,7 @@ export default function DocumentWorkspace({ documentId }: { documentId: string }
         stagingProfileId={workbook.profile.profile_id}
         view={viewMode}
         onViewChange={setViewMode}
+        oraclePreviewRequest={oracleRequest}
         workbook={workbook}
         gridSelection={selectionStore}
         // A classification decision re-stages the document: show its new schema.

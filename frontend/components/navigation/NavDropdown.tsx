@@ -108,12 +108,12 @@ export default function NavDropdown({ label, href, sections, current = false }: 
         className={[
           // Pill: the section owning this page is filled; an open one is tinted.
           "inline-flex h-9 shrink-0 snap-start items-center gap-1 whitespace-nowrap rounded-full border px-2.5 text-[12.5px] font-medium transition-colors xl:px-3 xl:text-[13px] 2xl:px-3.5",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7ee8f8]/70",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
           current
-            ? "border-transparent bg-white text-[#0b2530] hover:bg-white/90"
+            ? "border-transparent bg-primary text-white hover:bg-primary/90"
             : open
-              ? "border-white/25 bg-white/15 text-white"
-              : "border-white/10 text-white/80 hover:border-white/20 hover:bg-white/10 hover:text-white",
+              ? "border-border bg-surface-soft text-foreground"
+              : "border-transparent text-text-secondary hover:border-border hover:bg-surface-soft hover:text-foreground",
         ].join(" ")}
       >
         {label}

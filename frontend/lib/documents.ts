@@ -261,6 +261,9 @@ export interface SourceTableCandidate {
   rows: SourceTableCell[][];
   acceptance: "accepted" | "ambiguous" | "rejected";
   structure_score: number | null;
+  /** Where the table sits: for a web page, the headings above it. */
+  source_locator?: { section_path?: string[] | null } | null;
+  caption?: string | null;
 }
 
 export interface SourceStructure {

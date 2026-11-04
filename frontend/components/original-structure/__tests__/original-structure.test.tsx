@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import OriginalStructureView, { FIELD_COLUMNS, fieldLine } from "@/components/original-structure/original-structure-view";
+import OriginalStructureView, { FIELD_COLUMNS, fieldLine, numberNote } from "@/components/original-structure/original-structure-view";
 import type { LayoutField, LayoutTable, OriginalStructure } from "@/lib/original-structure";
 import { RecordSelectionProvider } from "@/lib/record-selection";
 
@@ -113,6 +113,9 @@ describe("OriginalStructureView", () => {
       .toEqual({ caption: { id: contract.id, number: "2.", name: "Contract Information" }, number: "", name: "Contract Number", indent: true });
     expect(fieldLine({ label: "Contract Name", field_name: "Contract Name", item: contract }, contract.id))
       .toEqual({ caption: null, number: "", name: "Contract Name", indent: true });
+    // The printed label names a fillable box; its own description is a tooltip note.
+    expect(numberNote({ label: "A. NAME", help_text: "10 Enter the Name of the person" }, "NAME"))
+      .toBe("Printed: A. NAME · Form field description: 10 Enter the Name of the person");
     // A printed sub-item shows its own letter under its item ("10 → A. NAME").
     const call = item("10", "FOR INFORMATION CALL");
     expect(fieldLine({ label: "A. NAME", field_name: "NAME", item: call, sub_item: "A" }, null))

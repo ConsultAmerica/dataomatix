@@ -330,7 +330,8 @@ def test_a_ruled_sf33_reads_selected_and_unselected_boxes_and_its_form_tables(ma
     assert measures["form_fields"]["status"] == "complete"
     assert measures["checkboxes"]["represented"] == measures["checkboxes"]["source"] >= 2
     choices = {f["field_name"]: f.get("choice") for f in list(layout_fields(layout)) if f.get("form_state")}
-    assert choices["Negotiated (RFP)"] == "Selected" and choices["Sealed Bid (IFB)"] == "Not Selected"
+    # Each option under its printed wording.
+    assert choices["NEGOTIATED (RFP)"] == "Selected" and choices["SEALED BID (IFB)"] == "Not Selected"
     titles = {t.get("title") for t in list(layout_tables(layout)) if t.get("form_table")}
     assert {"Table of Contents", "Acknowledgment of Amendments"} <= titles
     # The grid read over the form's ruled cells is shown as the form's boxes, in both views.

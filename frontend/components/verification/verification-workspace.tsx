@@ -1,12 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronDown, ChevronLeft, Download, ExternalLink, PanelLeftOpen, Rows3, Rows4, Search } from "lucide-react";
+import { ChevronLeft, Download, ExternalLink, PanelLeftOpen, Rows3, Rows4, Search } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import ClassificationPanel from "@/components/classification/classification-panel";
 import OracleIntegrationPanel from "@/components/oracle-integration-panel";
-import OriginalStructureView, { regionOf, rowHighlight, TableView } from "@/components/original-structure/original-structure-view";
+import { regionOf, rowHighlight, TableView } from "@/components/original-structure/original-structure-view";
 import DocumentAuditTrail from "@/components/review/document-audit-trail";
 import { MAPPING_LABEL, MAPPING_TONE, useOracleMappings } from "@/components/smart-view/oracle-status";
 import type { SourceViewRequest } from "@/components/source-verification-panel";
@@ -24,12 +24,12 @@ import type { SelectedExportFormat, StagingWorkbook } from "@/lib/staging-workbo
 import { isSelected, setCells, storeKey, type SelectionStore } from "@/lib/table-selection";
 import { downloadSelectedRecords, getBusinessData, getValidationSummary, type BusinessData, type ValidationSummary } from "@/lib/verification";
 
-export type VerificationTab = "original" | "business" | "advanced" | "tables" | "validation" | "oracle" | "history" | "summary";
+export type VerificationTab = "business" | "advanced" | "tables" | "validation" | "oracle" | "history" | "summary";
 export type WorkspaceView = VerificationTab | "smart";
 
-/** The tab order; Summary stays last. */
+/** Every view's name, in tab order. Only NAV_TABS are offered; the others
+ * still open from a link (?tab=history) and then show as a tab. */
 export const VERIFICATION_TABS: [VerificationTab, string][] = [
-  ["original", "Original File"],
   ["business", "Smart Review"],
   ["advanced", "Advanced Grid"],
   ["tables", "Tables"],
@@ -38,6 +38,8 @@ export const VERIFICATION_TABS: [VerificationTab, string][] = [
   ["history", "History"],
   ["summary", "Summary"],
 ];
+
+const NAV_TABS: ReadonlySet<VerificationTab> = new Set(["business", "tables", "validation", "oracle"]);
 
 const SOURCE_WIDTH_KEY = "dx-verification-source-width";
 const DETAILS_WIDTH_KEY = "dx-verification-details-width";
@@ -67,11 +69,14 @@ function storedNumber(key: string, fallback: number, min: number, max: number): 
 }
 
 /** Which tabs this document uses: tables only when it has some, Oracle /
- * Mapping not for identity or academic documents. Data never hides. */
-export function visibleTabs(structure: OriginalStructure | null, business: BusinessData | null): VerificationTab[] {
+ * Mapping not for identity or academic documents, the Advanced Grid only
+ * where it is the document's own table (a FAR Part's FAR Data). */
+export function visibleTabs(structure: OriginalStructure | null, business: BusinessData | null, farDocument = false): VerificationTab[] {
   const hasTables = (structure?.stats.tables ?? 0) > 0 || (business?.other.tables.length ?? 0) > 0;
   const noOracle = business?.document_class === "identity" || business?.document_class === "academic";
-  return VERIFICATION_TABS.map(([id]) => id).filter((id) => (id === "tables" ? hasTables : id === "oracle" ? !noOracle : true));
+  return VERIFICATION_TABS.map(([id]) => id).filter((id) =>
+    id === "advanced" ? farDocument : id === "tables" ? hasTables : id === "oracle" ? !noOracle : NAV_TABS.has(id),
+  );
 }
 
 const PENDING = new Set(["Not reviewed", "Pending review", "Needs review", "Added"]);
@@ -129,6 +134,7 @@ export default function VerificationWorkspace({
   onClassificationChanged,
   workbook = null,
   gridSelection = null,
+  oraclePreviewRequest = 0,
   children,
 }: {
   documentId: string;
@@ -142,6 +148,8 @@ export default function VerificationWorkspace({
    * shares the selection (by evidence) with every other tab. */
   workbook?: StagingWorkbook | null;
   gridSelection?: SelectionStore | null;
+  /** Bumped by the Export menu (or ?panel=oracle): open the Oracle tab's preview. */
+  oraclePreviewRequest?: number;
   /** Advanced Grid (and legacy Smart View) content. */
   children?: ReactNode;
 }) {
@@ -192,6 +200,8 @@ export default function VerificationWorkspace({
           reload();
           onClassificationChanged?.();
         }}
+        oraclePreviewRequest={oraclePreviewRequest}
+        farDocument={Boolean(workbook?.datasets.some((dataset) => dataset.dataset_id === "far_records"))}
       >
         {children}
       </Workspace>
@@ -362,6 +372,8 @@ function Workspace({
   error,
   reload,
   onClassificationChanged,
+  oraclePreviewRequest = 0,
+  farDocument = false,
   children,
 }: {
   documentId: string;
@@ -370,12 +382,14 @@ function Workspace({
   stagingProfileId: string | null;
   view: WorkspaceView;
   onViewChange: (view: WorkspaceView) => void;
+  farDocument?: boolean;
   structure: OriginalStructure | null;
   business: BusinessData | null;
   validation: ValidationSummary | null;
   error: string;
   reload: () => void;
   onClassificationChanged: () => void;
+  oraclePreviewRequest?: number;
   children?: ReactNode;
 }) {
   const selection = useRecordSelection()!;
@@ -393,10 +407,12 @@ function Workspace({
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const [confirmApprove, setConfirmApprove] = useState(false);
-  const [moreOpen, setMoreOpen] = useState(false);
 
-  const tabs = visibleTabs(structure, business);
-  const active: WorkspaceView = view === "smart" || tabs.includes(view) ? view : "original";
+  const offered = visibleTabs(structure, business, farDocument);
+  // A view opened by link keeps a tab while it is open.
+  const linked = VERIFICATION_TABS.some(([id]) => id === view) && !NAV_TABS.has(view as VerificationTab) && !offered.includes(view as VerificationTab);
+  const tabs = linked ? [...offered, view as VerificationTab] : offered;
+  const active: WorkspaceView = view === "smart" || tabs.includes(view) ? view : "business";
   // Panels stay mounted once opened: switching back costs no request and
   // keeps their state (scroll, expanded sections, review in progress).
   const [visited, setVisited] = useState<ReadonlySet<WorkspaceView>>(() => new Set([active]));
@@ -445,7 +461,7 @@ function Workspace({
     }
     setNotice("");
     setFocusKey(key);
-    if (active !== "original" && active !== "business") onViewChange("original");
+    if (active !== "business") onViewChange("business");
     window.requestAnimationFrame(() => document.querySelector(`[data-record-key="${CSS.escape(key)}"]`)?.scrollIntoView({ block: "center" }));
   }
 
@@ -501,22 +517,6 @@ function Workspace({
             </button>
           ))}
         </div>
-        <div className="relative pb-1">
-          <button type="button" onClick={() => setMoreOpen((open) => !open)} aria-expanded={moreOpen} aria-haspopup="menu"
-            className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs ${active === "smart" ? "font-semibold text-primary" : "text-text-secondary hover:text-foreground"}`}>
-            {active === "smart" ? "Smart View" : "More views"}
-            <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
-          </button>
-          {moreOpen && (
-            <div role="menu" className="absolute right-0 z-40 mt-1 w-64 rounded-lg border border-border bg-surface py-1 shadow-sm">
-              <button type="button" role="menuitem" onClick={() => { onViewChange("smart"); setMoreOpen(false); }}
-                className="block w-full px-3 py-1.5 text-left text-sm hover:bg-surface-soft">
-                <span className="font-medium text-foreground">Smart View</span>
-                <span className="block text-[11px] text-text-muted">The earlier view organised by document type</span>
-              </button>
-            </div>
-          )}
-        </div>
       </div>
 
       {error && <p className="mt-3 rounded-lg border border-danger/30 bg-danger/5 p-3 text-sm text-danger" role="alert">{error}</p>}
@@ -535,7 +535,7 @@ function Workspace({
             ["pending", "Pending review", counts.pending, "text-text-secondary"],
           ] as const).map(([id, name, count, tone]) => (
             <button key={id} type="button" data-testid={`count-${id}`}
-              onClick={() => onViewChange(id === "pending" ? "original" : "validation")}
+              onClick={() => onViewChange(id === "pending" ? "business" : "validation")}
               className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1 hover:border-primary">
               <span className={`font-semibold tabular-nums ${count ? tone : "text-text-muted"}`}>{structure && validation ? count : "…"}</span>
               <span className="text-text-secondary">{name}</span>
@@ -627,16 +627,12 @@ function Workspace({
 
           {/* Center: the extracted information. */}
           <div className="min-w-0 flex-1">
-            {panel("original",
-              <OriginalStructureView documentId={documentId} documentName={documentName} pageCount={pageCount}
-                stagingProfileId={stagingProfileId} structure={structure} onViewSource={viewSource} onChanged={reload} reviewEnabled
-                onFocusRecord={focusRecord} focusedKey={focusKey} filter={filter} density={density} />)}
             {panel("business",
               <BusinessDataView documentId={documentId} business={business} onViewRecord={focusRecord} onViewSource={viewSource}
                 onChanged={reload} density={density} filter={filter} focusedKey={focusKey} />)}
             {panel("tables", structure && <TablesTab structure={structure} business={business} onViewRecord={focusRecord} focusedKey={focusKey} density={density} filter={filter} />)}
             {panel("validation", <ValidationView documentId={documentId} validation={validation} onViewRecord={focusRecord} onViewSource={viewSource} />)}
-            {panel("oracle", <OracleTab documentId={documentId} documentName={documentName} mappings={mappings} />)}
+            {panel("oracle", <OracleTab documentId={documentId} documentName={documentName} mappings={mappings} previewRequest={oraclePreviewRequest} />)}
             {panel("history", <HistoryTab documentId={documentId} />)}
             {panel("summary",
               <SummaryView documentId={documentId} business={business} structure={structure} validation={validation}
@@ -700,8 +696,19 @@ function TablesTab({ structure, business, onViewRecord, focusedKey, density, fil
   );
 }
 
-function OracleTab({ documentId, documentName, mappings }: { documentId: string; documentName: string; mappings: ReturnType<typeof useOracleMappings> }) {
-  const [preview, setPreview] = useState(false);
+function OracleTab({ documentId, documentName, mappings, previewRequest = 0 }: {
+  documentId: string;
+  documentName: string;
+  mappings: ReturnType<typeof useOracleMappings>;
+  previewRequest?: number;
+}) {
+  const [preview, setPreview] = useState(previewRequest > 0);
+  const [seenRequest, setSeenRequest] = useState(previewRequest);
+  // Each new request (Export menu, ?panel=oracle) opens the preview; the button toggles it as before.
+  if (previewRequest !== seenRequest) {
+    setSeenRequest(previewRequest);
+    if (previewRequest > 0) setPreview(true);
+  }
   return (
     <div className="mt-1 space-y-4" data-testid="oracle-tab">
       <section className="rounded-xl border border-border bg-surface p-4 text-sm">

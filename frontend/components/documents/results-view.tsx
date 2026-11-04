@@ -68,6 +68,8 @@ interface TableView extends Located {
   title: string;
   headers: string[];
   rows: string[][];
+  /** Every body cell is empty as printed: a form left to fill in. */
+  blank?: boolean;
 }
 
 // A repeating dataset whose records are "field name → value" rows (Key
@@ -159,6 +161,16 @@ export function deriveFields(workbook: StagingWorkbook): { fields: FieldRow[]; t
   return { fields, tables };
 }
 
+/** A page reference as a contents page prints it: "11", or a title with
+ * leader dots ending in a page number. */
+const PAGE_REFERENCE = /^\s*(?:[\s\S]*?[.·…_]{3,}\s*)?\d{1,4}\s*$/;
+const NUMBERED_HEADING = /^\s*(?:[A-Z]{1,2}\.\d+(?:\.\d+)*|Section\s+[A-Z]\b|PART\s+[IVX]+\b|ARTICLE\s+\d+|Subpart\s+\d|\d+(?:\.\d+)+)/i;
+
+/** A table-of-contents entry read as a label/value pair ("B.1 Background" → "11"). */
+export function isContentsPair(label: string, value: string): boolean {
+  return PAGE_REFERENCE.test(value) && (NUMBERED_HEADING.test(label) || /[.·…]{6,}/.test(value));
+}
+
 export function derivePairs(structure: SourceStructure | null, fields: FieldRow[]): PairRow[] {
   const pairs: PairRow[] = (structure?.field_candidates ?? [])
     .filter((candidate) => candidate.acceptance !== "rejected" && candidate.raw_value.trim())
@@ -186,15 +198,19 @@ function detectedTables(structure: SourceStructure | null): TableView[] {
     .filter((table: SourceTableCandidate) => table.acceptance === "accepted" && table.rows.length > 0)
     .map((table, index) => {
       const width = Math.max(table.headers.length, ...table.rows.map((row) => row.length));
+      const rows = table.rows.map((row) => {
+        const cells = Array<string>(width).fill("");
+        for (const cell of row) if (cell.column_index < width) cells[cell.column_index] = cell.text;
+        return cells;
+      });
+      // Named after the clause it sits in (a web page's headings), else by number.
+      const section = table.caption || table.source_locator?.section_path?.at(-1);
       return {
         id: table.candidate_id,
-        title: `Table ${index + 1}${table.page ? ` · page ${table.page}` : ""}`,
+        title: `${section ? section : `Table ${index + 1}`}${table.page ? ` · page ${table.page}` : ""}`,
         headers: Array.from({ length: width }, (_, column) => table.headers[column] ?? ""),
-        rows: table.rows.map((row) => {
-          const cells = Array<string>(width).fill("");
-          for (const cell of row) if (cell.column_index < width) cells[cell.column_index] = cell.text;
-          return cells;
-        }),
+        rows,
+        blank: rows.every((row) => row.every((cell) => !cell.trim())),
         page: table.page,
         bbox: table.bbox,
       };
@@ -220,14 +236,14 @@ function StatusPill({ status }: { status: Status }) {
 
 function StatCard({ label, value, icon: Icon, tone }: { label: string; value: string; icon: typeof FileText; tone: string }) {
   return (
-    <div className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-surface px-4 py-3.5 shadow-sm">
-      <div className="min-w-0">
-        <p className="text-xs text-text-muted">{label}</p>
-        <p className="mt-0.5 truncate text-lg font-semibold tracking-tight text-foreground" title={value}>{value}</p>
-      </div>
-      <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${tone}`}>
-        <Icon className="h-4 w-4" aria-hidden="true" />
+    <div className="flex min-w-0 items-center gap-2.5 rounded-lg border border-border bg-surface px-3 py-2">
+      <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${tone}`}>
+        <Icon className="h-3.5 w-3.5" aria-hidden="true" />
       </span>
+      <div className="min-w-0">
+        <p className="text-[11px] leading-tight text-text-muted">{label}</p>
+        <p className="truncate text-sm font-semibold text-foreground" title={value}>{value}</p>
+      </div>
     </div>
   );
 }
@@ -323,36 +339,142 @@ function PageViewer({ documentId, page, pageCount, onPage, box }: {
   );
 }
 
+/** A cell value that is an amount or a count (right-aligned): digits with
+ * grouping or decimals, a currency or a percent. Identifiers such as
+ * "52.000" or "INV-0001" in a number/code column are not amounts. */
+const AMOUNT = /^[\s$€£(-]*\d{1,3}(?:,\d{3})*(?:\.\d+)?\)?%?$|^[\s$€£(-]*\d+(?:\.\d{2})?\)?%?$/;
+const IDENTIFIER_HEADER = /\b(number|no\.?|#|code|id|clause|section|item|ref(erence)?)\b/i;
+/** A column with a few repeated values ("Record Type", "Status") filters the table. */
+const FACET_HEADER = /\b(record type|type|status|category|kind)\b/i;
+const FROZEN = 1;
+
+function amountColumns(table: TableView): boolean[] {
+  return table.headers.map((header, column) => {
+    if (IDENTIFIER_HEADER.test(header)) return false;
+    const values = table.rows.map((row) => row[column]).filter((cell) => cell?.trim());
+    return values.length > 0 && values.filter((cell) => AMOUNT.test(cell)).length / values.length >= 0.8;
+  });
+}
+
+function facetColumn(table: TableView): number {
+  return table.headers.findIndex((header, column) => {
+    if (!FACET_HEADER.test(header)) return false;
+    const distinct = new Set(table.rows.map((row) => row[column]).filter(Boolean));
+    return distinct.size > 1 && distinct.size <= 12;
+  });
+}
+
+/** One table, laid out like the FAR records grid: one line per row with the
+ * full text on hover, a sticky header and first column, its own search and,
+ * where it has a type column, filter chips with counts. */
+/** A regulation's body text columns ("Provision Text", "Clause Text",
+ * "Section Text") read first: straight after the identifier and title. */
+const TEXT_COLUMN = /\b(clause|provision|section)\s+text\b/i;
+const TITLE_COLUMN = /\b(title|heading|name)\b/i;
+
+export function columnOrder(headers: string[]): number[] {
+  const all = headers.map((_, index) => index);
+  const text = all.filter((index) => TEXT_COLUMN.test(headers[index]));
+  if (text.length === 0) return all;
+  const lead = TITLE_COLUMN.test(headers[1] ?? "") ? 2 : 1;
+  const rest = all.filter((index) => !text.includes(index));
+  // Provision and clause text before section text, as the request orders them.
+  const ranked = [...text].sort((a, b) => rank(headers[a]) - rank(headers[b]));
+  return [...rest.slice(0, lead), ...ranked, ...rest.slice(lead)];
+}
+
+function rank(header: string): number {
+  return /clause/i.test(header) ? 0 : /provision/i.test(header) ? 1 : 2;
+}
+
 function DataTable({ table, filter }: { table: TableView; filter: string }) {
-  const rows = filter
-    ? table.rows.filter((row) => row.some((cell) => cell.toLowerCase().includes(filter)))
-    : table.rows;
+  const [query, setQuery] = useState("");
+  const [facet, setFacet] = useState<string | null>(null);
+  const amounts = useMemo(() => amountColumns(table), [table]);
+  const facetAt = useMemo(() => facetColumn(table), [table]);
+  const counts = useMemo(() => {
+    if (facetAt < 0) return [];
+    const byValue = new Map<string, number>();
+    for (const row of table.rows) if (row[facetAt]) byValue.set(row[facetAt], (byValue.get(row[facetAt]) ?? 0) + 1);
+    return [...byValue.entries()].sort((a, b) => b[1] - a[1]);
+  }, [table, facetAt]);
+  const needles = [filter, query.trim().toLowerCase()].filter(Boolean);
+  const rows = table.rows.filter((row) =>
+    (facet === null || row[facetAt] === facet) && needles.every((needle) => row.some((cell) => cell.toLowerCase().includes(needle))));
+  const large = table.rows.length > 12;
+  const order = useMemo(() => columnOrder(table.headers), [table.headers]);
+  // Columns blank on every row shown (all of them, or the chosen type's)
+  // are hidden — counted beside the row count, one click to show.
+  const [showEmpty, setShowEmpty] = useState(false);
+  const emptyColumns = order.filter((column, position) => position >= FROZEN && rows.length > 0 && rows.every((row) => !row[column]?.trim()));
+  const shown = showEmpty ? order : order.filter((column) => !emptyColumns.includes(column));
+
   return (
-    <div className="overflow-hidden rounded-xl border border-border">
-      <div className="flex items-center justify-between bg-surface-soft/70 px-3 py-2">
-        <p className="text-sm font-medium text-foreground">{table.title}</p>
-        <p className="text-xs tabular-nums text-text-muted">{rows.length} of {table.rows.length} rows</p>
+    <div className="overflow-hidden rounded-xl border border-border bg-surface" data-testid="results-table">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border px-3 py-2">
+        <p className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground" title={table.title}>{table.title}</p>
+        {emptyColumns.length > 0 && (
+          <button type="button" onClick={() => setShowEmpty((value) => !value)} aria-pressed={showEmpty}
+                  className="shrink-0 text-xs text-text-secondary underline-offset-2 hover:text-foreground hover:underline" data-testid="results-empty-columns">
+            {showEmpty ? `Hide ${emptyColumns.length} empty column${emptyColumns.length === 1 ? "" : "s"}`
+              : `${emptyColumns.length} empty column${emptyColumns.length === 1 ? "" : "s"} hidden · Show`}
+          </button>
+        )}
+        <p className="shrink-0 text-xs tabular-nums text-text-muted">{rows.length} of {table.rows.length} rows</p>
       </div>
-      <div className="max-h-[420px] overflow-auto">
-        <table className="w-full min-w-max text-left text-sm">
-          <thead className="sticky top-0 bg-surface text-[11px] uppercase tracking-wide text-text-muted">
+      {(large || counts.length > 0) && (
+        <div className="flex flex-wrap items-center gap-1.5 border-b border-border px-3 py-2">
+          {large && (
+            <label className="flex h-7 min-w-[12rem] flex-1 items-center gap-1.5 rounded-full border border-border bg-surface px-2.5 text-xs text-text-muted sm:max-w-xs">
+              <Search className="h-3.5 w-3.5" aria-hidden="true" />
+              <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={`Search ${table.title}…`}
+                     aria-label={`Search ${table.title}`} className="min-w-0 flex-1 bg-transparent text-foreground outline-none placeholder:text-text-muted" />
+            </label>
+          )}
+          {counts.length > 0 && (
+            <div className="flex flex-wrap gap-1" role="group" aria-label={`Filter by ${table.headers[facetAt]}`}>
+              {[["All", table.rows.length] as const, ...counts].map(([value, count]) => {
+                const selected = value === "All" ? facet === null : facet === value;
+                return (
+                  <button key={value} type="button" aria-pressed={selected} onClick={() => setFacet(value === "All" ? null : value)}
+                          className={`h-7 rounded-full border px-2.5 text-xs ${selected ? "border-primary bg-primary text-white" : "border-border bg-surface text-text-secondary hover:border-primary hover:text-foreground"}`}>
+                    {value} <span className="tabular-nums opacity-80">{count}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+      <div className="max-h-[560px] overflow-auto">
+        <table className="w-full min-w-max border-separate border-spacing-0 text-left text-[13px]">
+          <thead>
             <tr>
-              {table.headers.map((header, index) => (
-                <th key={index} className="border-b border-border px-3 py-2 font-medium">{header || `Column ${index + 1}`}</th>
+              {shown.map((column, position) => (
+                <th key={column} scope="col"
+                    className={`sticky top-0 h-8 max-w-[18rem] truncate border-b border-border bg-surface-soft px-2 text-[11px] font-semibold uppercase tracking-wide text-text-secondary ${position < FROZEN ? "left-0 z-30" : "z-20"} ${amounts[column] ? "text-right" : ""}`}>
+                  {table.headers[column] || `Column ${column + 1}`}
+                </th>
               ))}
             </tr>
           </thead>
           <tbody>
             {rows.map((row, rowIndex) => (
-              <tr key={rowIndex} className="border-b border-border/60 last:border-0 hover:bg-surface-soft/60">
-                {row.map((cell, cellIndex) => (
-                  <td key={cellIndex}
-                      className={`px-3 py-2 ${/^[\s$€£(-]*[\d,.]+\)?%?$/.test(cell) ? "text-right tabular-nums" : "text-foreground"}`}>
-                    {cell || <span className="text-text-muted">—</span>}
-                  </td>
-                ))}
+              <tr key={rowIndex} className="group">
+                {shown.map((column, position) => {
+                  const cell = row[column] ?? "";
+                  return (
+                    <td key={column} title={cell && cell.length > 40 ? cell : undefined}
+                        className={`h-8 max-w-[18rem] truncate border-b border-border/70 px-2 align-middle group-hover:bg-surface-soft ${position < FROZEN ? "sticky left-0 z-10 bg-surface font-medium" : ""} ${amounts[column] ? "text-right tabular-nums" : ""} ${cell ? "text-foreground" : "text-text-muted"}`}>
+                      {cell || "—"}
+                    </td>
+                  );
+                })}
               </tr>
             ))}
+            {rows.length === 0 && (
+              <tr><td colSpan={Math.max(1, shown.length)} className="px-3 py-6 text-center text-sm text-text-muted">No rows match.</td></tr>
+            )}
           </tbody>
         </table>
       </div>
@@ -366,7 +488,11 @@ export default function ResultsView({ documentId, workbook, typeLabel, pageCount
   typeLabel: string;
   pageCount: number;
 }) {
-  const [tab, setTab] = useState<ResultsTab>("fields");
+  const { fields, tables: stagedTables } = useMemo(() => deriveFields(workbook), [workbook]);
+  // A document whose data is a table (a FAR Part's "FAR Data") opens on
+  // Tables, listed first; one with fields (an invoice) opens on Fields.
+  const tablesFirst = fields.length === 0 && stagedTables.length > 0;
+  const [tab, setTab] = useState<ResultsTab>(tablesFirst ? "tables" : "fields");
   const [filter, setFilter] = useState("");
   const [structure, setStructure] = useState<SourceStructure | null>(null);
   const [pages, setPages] = useState<DocumentPage[] | null>(null);
@@ -383,9 +509,25 @@ export default function ResultsView({ documentId, workbook, typeLabel, pageCount
     };
   }, [documentId]);
 
-  const { fields, tables: stagedTables } = useMemo(() => deriveFields(workbook), [workbook]);
-  const pairs = useMemo(() => derivePairs(structure, fields), [structure, fields]);
+  const allPairs = useMemo(() => derivePairs(structure, fields), [structure, fields]);
+  // Contents entries (a heading and its page number) aren't data: set aside,
+  // counted and one click away, never dropped.
+  const contentsPairs = useMemo(() => {
+    const direct = allPairs.filter((pair) => isContentsPair(pair.label, pair.value));
+    // A page that is mostly contents entries: its other "heading → page number" pairs are too.
+    const perPage = new Map<number, number>();
+    for (const pair of direct) if (pair.page) perPage.set(pair.page, (perPage.get(pair.page) ?? 0) + 1);
+    const contentsPages = new Set([...perPage].filter(([, count]) => count >= 5).map(([page]) => page));
+    return allPairs.filter((pair) => direct.includes(pair) || (pair.page != null && contentsPages.has(pair.page) && PAGE_REFERENCE.test(pair.value)));
+  }, [allPairs]);
+  const [showContents, setShowContents] = useState(false);
+  const pairs = showContents ? allPairs : allPairs.filter((pair) => !contentsPairs.includes(pair));
   const tables = useMemo(() => [...stagedTables, ...detectedTables(structure)], [stagedTables, structure]);
+  const blankTables = tables.filter((table) => table.blank);
+  // A web page or text file has no page image to show: its pane starts closed.
+  const textOnly = pages !== null && pages.length > 0 && pages.every((item) => !item.page_width);
+  const [documentOpen, setDocumentOpen] = useState<boolean | null>(null);
+  const showDocument = documentOpen ?? !textOnly;
   const needle = filter.trim().toLowerCase();
   const matches = (...values: string[]) => !needle || values.some((value) => value.toLowerCase().includes(needle));
   const needsReview = fields.filter((field) => field.status === "Needs Review").length;
@@ -397,10 +539,12 @@ export default function ResultsView({ documentId, workbook, typeLabel, pageCount
     if (item.page) setPage(item.page);
   }
 
+  const tablesTab = { id: "tables" as const, label: "Tables", count: tables.length, icon: Table2 };
   const tabs: { id: ResultsTab; label: string; count: number; icon: typeof FileText }[] = [
+    ...(tablesFirst ? [tablesTab] : []),
     { id: "fields", label: "Fields", count: fields.length, icon: ListChecks },
     { id: "pairs", label: "Key-value pairs", count: pairs.length, icon: KeyRound },
-    { id: "tables", label: "Tables", count: tables.length, icon: Table2 },
+    ...(tablesFirst ? [] : [tablesTab]),
     { id: "ocr", label: "OCR text", count: pages?.length ?? 0, icon: ScanText },
   ];
 
@@ -418,8 +562,8 @@ export default function ResultsView({ documentId, workbook, typeLabel, pageCount
   }, [fields, needle]);
 
   return (
-    <section className="space-y-4" data-testid="results-view">
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+    <section className="space-y-3" data-testid="results-view">
+      <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
         <StatCard label="Document type" value={typeLabel} icon={FileText} tone="bg-primary-soft text-primary" />
         <StatCard label="Fields extracted" value={fields.length.toLocaleString()} icon={ListChecks} tone="bg-success/10 text-success" />
         <StatCard label="Needs review" value={needsReview.toLocaleString()} icon={AlertTriangle}
@@ -428,11 +572,23 @@ export default function ResultsView({ documentId, workbook, typeLabel, pageCount
                   tone="bg-surface-soft text-text-secondary" />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
-        <div className="h-[60vh] lg:sticky lg:top-4 lg:h-[calc(100vh-7rem)]">
-          <PageViewer documentId={documentId} page={page} pageCount={totalPages} onPage={(next) => { setPage(next); setSelected(null); }}
-                      box={selected?.bbox ?? null} />
-        </div>
+      <div className="flex justify-end">
+        <button type="button" onClick={() => setDocumentOpen(!showDocument)} aria-expanded={showDocument} aria-controls="results-document"
+          className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-text-secondary hover:bg-surface-soft hover:text-foreground"
+          data-testid="toggle-document">
+          {showDocument ? <ChevronLeft className="h-3.5 w-3.5" aria-hidden="true" /> : <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />}
+          {showDocument ? "Hide document" : textOnly ? "Show document (no page image for this file)" : "Show document"}
+        </button>
+      </div>
+
+      {/* The document is the narrower pane, so the data side shows more columns. */}
+      <div className={`grid gap-4 ${showDocument ? "lg:grid-cols-[minmax(0,2fr)_minmax(0,5fr)]" : ""}`}>
+        {showDocument && (
+          <div id="results-document" className="h-[50vh] lg:sticky lg:top-4 lg:h-[calc(100vh-7rem)]">
+            <PageViewer documentId={documentId} page={page} pageCount={totalPages} onPage={(next) => { setPage(next); setSelected(null); }}
+                        box={selected?.bbox ?? null} />
+          </div>
+        )}
 
         <div className="min-w-0 rounded-2xl border border-border bg-surface shadow-sm">
           <div className="flex gap-1 overflow-x-auto border-b border-border px-2" role="tablist" aria-label="Results">
@@ -508,11 +664,21 @@ export default function ResultsView({ documentId, workbook, typeLabel, pageCount
               )
             )}
 
+            {tab === "pairs" && contentsPairs.length > 0 && (
+              <p className="mb-2 flex flex-wrap items-center gap-x-2 text-xs text-text-secondary" data-testid="contents-pairs">
+                {showContents
+                  ? `Showing ${contentsPairs.length} table-of-contents entr${contentsPairs.length === 1 ? "y" : "ies"} (heading and page number).`
+                  : `${contentsPairs.length} table-of-contents entr${contentsPairs.length === 1 ? "y" : "ies"} (heading and page number) not listed.`}
+                <button type="button" onClick={() => setShowContents((value) => !value)} aria-expanded={showContents} aria-controls="results-pairs-list" className="font-medium text-primary hover:underline">
+                  {showContents ? "Hide them" : "Show them"}
+                </button>
+              </p>
+            )}
             {tab === "pairs" && (
               pairs.length === 0 ? (
                 <p className="py-10 text-center text-sm text-text-muted">{structure ? "No label/value pairs were found." : "Reading the document's layout…"}</p>
               ) : (
-                <ul className="divide-y divide-border/70 overflow-hidden rounded-xl border border-border">
+                <ul id="results-pairs-list" aria-label="Key-value pairs" className="divide-y divide-border/70 overflow-hidden rounded-xl border border-border">
                   {pairs.filter((pair) => matches(pair.label, pair.value)).map((pair) => (
                     <li key={pair.id}>
                       <button
@@ -549,12 +715,31 @@ export default function ResultsView({ documentId, workbook, typeLabel, pageCount
               tables.length === 0 ? (
                 <p className="py-10 text-center text-sm text-text-muted">No tables were found in this document.</p>
               ) : (
-                <div className="space-y-4">
-                  {tables.map((table) => (
+                <div className="space-y-3">
+                  {tables.filter((table) => !table.blank).map((table) => (
                     <div key={table.id} onClick={() => select(table)} role="presentation">
                       <DataTable table={table} filter={needle} />
                     </div>
                   ))}
+                  {blankTables.length > 0 && (
+                    // Forms printed blank in the document (a regulation's fill-in
+                    // tables): listed together, not as screens of "—".
+                    <details className="rounded-xl border border-dashed border-border" data-testid="blank-tables">
+                      <summary className="cursor-pointer px-3 py-2 text-sm text-text-secondary">
+                        {blankTables.length} fill-in table{blankTables.length === 1 ? "" : "s"} printed blank in the document — headers only
+                      </summary>
+                      <ul className="divide-y divide-border/60 border-t border-border text-xs">
+                        {blankTables.map((table) => (
+                          <li key={table.id} className="px-3 py-1.5">
+                            <button type="button" onClick={() => select(table)} className="text-left">
+                              <span className="font-medium text-foreground">{table.title}</span>
+                              <span className="text-text-muted"> · {table.headers.filter(Boolean).join(" | ") || "no headers"} · {table.rows.length} blank row{table.rows.length === 1 ? "" : "s"}</span>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    </details>
+                  )}
                 </div>
               )
             )}

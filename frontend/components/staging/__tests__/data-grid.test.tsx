@@ -145,17 +145,22 @@ describe("column arrangement", () => {
     i < 5 ? "Attachments" : "FAR Clauses", i < 5 ? "Attachment" : "Clause", `R-${i}`, `Title ${i}`,
     i < 5 ? "" : `Text ${i}`, i < 5 ? "" : i % 2 ? "Reference" : "Full Text", "",
   ]);
-  const labels = () => screen.getAllByRole("columnheader").slice(1, 8).map((th) => th.textContent);
+  const labels = (count = 6) => screen.getAllByRole("columnheader").slice(1, 1 + count).map((th) => th.textContent);
 
-  it("leads with the columns that vary; categories, blank and repeated columns trail", () => {
+  it("leads with the columns that vary; categories and repeated columns trail; a column no record fills is hidden, said so", () => {
     render(<StagingDatasetTable dataset={dataset("contract_data", "Contract Data", COLUMNS, rows)} documentId="d1" pageSize={10} />);
-    expect(labels()).toEqual(["Record ID", "Title", "Description / Text", "Incorporation Type", "Section", "Record Type", "Domain"]);
+    expect(labels()).toEqual(["Record ID", "Title", "Description / Text", "Incorporation Type", "Section", "Record Type"]);
+    // Domain is empty on every record: hidden, with one click to show it at the end.
+    fireEvent.click(screen.getByTestId("empty-columns"));
+    expect(labels(7)).toEqual(["Record ID", "Title", "Description / Text", "Incorporation Type", "Section", "Record Type", "Domain"]);
+    expect(screen.queryByTestId("empty-columns")).toBeNull();
   });
 
   it("moves columns blank on every shown row to the end, for that page", () => {
     render(<StagingDatasetTable dataset={dataset("contract_data", "Contract Data", COLUMNS, rows)} documentId="d1" pageSize={5} />);
-    // Page 1 is the five attachments: no text or incorporation type.
-    expect(labels()).toEqual(["Record ID", "Title", "Section", "Record Type", "Description / Text", "Incorporation Type", "Domain"]);
+    // Page 1 is the five attachments: no text or incorporation type (filled on page 2, so still shown).
+    expect(labels()).toEqual(["Record ID", "Title", "Section", "Record Type", "Description / Text", "Incorporation Type"]);
+    expect(screen.getByTestId("empty-columns")).toHaveTextContent("1 empty column hidden · Show");
   });
 });
 
@@ -259,7 +264,7 @@ describe("document workspace", () => {
   it(
     "uses the full width, names the document by filename and opens on its results",
     async () => {
-      search = new URLSearchParams();
+      search = new URLSearchParams("tab=advanced");
       const { unmount } = render(<DocumentWorkspace documentId="x1" />);
       // Documents open on Results, then the staged Summary; technical stages follow, Transform last.
       const views = await screen.findByRole("tablist", { name: "Document views" });
@@ -268,7 +273,7 @@ describe("document workspace", () => {
       expect(within(views).getByRole("tab", { name: "Results" }).getAttribute("aria-selected")).toBe("true");
       unmount();
 
-      search = new URLSearchParams("view=staging");
+      search = new URLSearchParams("tab=advanced&view=staging");
       render(<DocumentWorkspace documentId="x1" />);
       const workspace = await screen.findByTestId("document-workspace");
       expect(workspace.className).toContain("w-full");

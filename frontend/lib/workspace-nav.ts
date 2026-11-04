@@ -166,7 +166,7 @@ export function breadcrumbsForPath(
     return crumbs;
   }
 
-  const documentMatch = path.match(/^\/documents\/([^/]+)(?:\/(review|form))?$/);
+  const documentMatch = path.match(/^\/documents\/([^/]+)(?:\/(review|form|parse|classify|sections|split))?$/);
   if (documentMatch) {
     // Back to the list the person came from (filters, sort and page kept).
     const returnQs = params.get("return");
@@ -178,6 +178,8 @@ export function breadcrumbsForPath(
         ? "Review"
         : documentMatch[2] === "form"
           ? "Review form"
+          : documentMatch[2] && CAPABILITY_CRUMBS[documentMatch[2]]
+          ? CAPABILITY_CRUMBS[documentMatch[2]]
           : params.get("panel") === "oracle"
           ? "Oracle"
           : DOCUMENT_VIEW_CRUMBS[params.get("view") ?? ""];
@@ -277,6 +279,14 @@ const DOCUMENT_VIEW_CRUMBS: Record<string, string> = {
   transform: "Transform",
   data: "Data",
   qa: "QA",
+};
+
+/** The document capability pages (/documents/[id]/parse …); Extract is the document itself. */
+const CAPABILITY_CRUMBS: Record<string, string> = {
+  parse: "Parse",
+  classify: "Classify",
+  sections: "Sections",
+  split: "Split",
 };
 
 /** Unmapped routes: one clickable crumb per segment, title-cased. */

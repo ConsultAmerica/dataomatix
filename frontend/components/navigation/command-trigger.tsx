@@ -27,7 +27,7 @@ export default function CommandTrigger({
         onClick={onOpen}
         aria-label={`Search or jump to (${shortcut})`}
         aria-keyshortcuts="Control+K Meta+K"
-        className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white/85 transition-colors hover:bg-white/10 hover:text-white"
+        className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-text-secondary transition-colors hover:bg-surface-soft hover:text-foreground"
       >
         <Search className="h-4 w-4" strokeWidth={1.75} />
       </button>
@@ -39,11 +39,11 @@ export default function CommandTrigger({
       onClick={onOpen}
       aria-label={`Search or jump to (${shortcut})`}
       aria-keyshortcuts="Control+K Meta+K"
-      className="group inline-flex h-9 shrink-0 items-center gap-2 rounded-full border border-white/15 bg-white/[0.06] pl-3 pr-1.5 text-[13px] text-white/70 transition-colors hover:border-white/25 hover:bg-white/10 hover:text-white"
+      className="group inline-flex h-9 shrink-0 items-center gap-2 rounded-full border border-border bg-surface-soft pl-3 pr-1.5 text-[13px] text-text-secondary transition-colors hover:border-primary/30 hover:bg-surface hover:text-foreground"
     >
       <Search className="h-4 w-4 shrink-0" strokeWidth={1.75} />
       <span className={`whitespace-nowrap ${labelClassName}`}>Search or jump to…</span>
-      <kbd className={`rounded-md border border-white/15 bg-white/10 px-1.5 py-0.5 font-sans text-[10px] font-medium text-white/80 ${kbdClassName}`}>
+      <kbd className={`rounded-md border border-border bg-surface px-1.5 py-0.5 font-sans text-[10px] font-medium text-text-secondary ${kbdClassName}`}>
         {shortcut}
       </kbd>
     </button>

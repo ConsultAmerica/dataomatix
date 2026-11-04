@@ -35,6 +35,7 @@ from app.api import (
     validation_rules,
     document_intelligence,
     original_structure,
+    document_parse,
     document_workspace,
     source_view,
     staging_workbook,
@@ -221,6 +222,14 @@ app.include_router(
     # Document isolation for every /{document_id} route (core/document_access.py).
     dependencies=[Depends(enforce_document_access)],
     tags=["Original Structure"],
+)
+
+app.include_router(
+    document_parse.router,
+    prefix="/api/documents",
+    # Document isolation for every /{document_id} route (core/document_access.py).
+    dependencies=[Depends(enforce_document_access)],
+    tags=["Parse"],
 )
 
 app.include_router(

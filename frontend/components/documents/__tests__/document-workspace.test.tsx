@@ -5,7 +5,22 @@ import DocumentWorkspace from "@/components/documents/document-workspace";
 import type { StagingCell, StagingDataset, StagingWorkbook } from "@/lib/staging-workbook";
 
 // These tests cover the full data workspace (Advanced Grid); Smart View has its own.
-beforeEach(() => window.localStorage.setItem("dx-workspace-mode", "advanced"));
+beforeEach(() => {
+  window.localStorage.setItem("dx-workspace-mode", "advanced");
+  rememberAnyView = true;
+});
+
+// Advanced Grid and Smart View are no longer offered tabs, so a browser never
+// remembers them; these tests open them directly. One test turns this off.
+let rememberAnyView = true;
+vi.mock("@/lib/browser-preference", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/browser-preference")>();
+  return {
+    ...actual,
+    useBrowserPreference: <T extends string>(key: string, allowed: readonly T[], fallback: T) =>
+      actual.useBrowserPreference<T>(key, rememberAnyView && key === "dx-workspace-mode" ? [...allowed, "advanced" as T, "smart" as T] : allowed, fallback),
+  };
+});
 
 let search = new URLSearchParams();
 const replace = vi.fn();
@@ -16,7 +31,9 @@ vi.mock("@/lib/verification", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/verification")>()),
   getBusinessData: vi.fn(() => Promise.reject(new Error("not needed"))),
   getValidationSummary: vi.fn(() => Promise.reject(new Error("not needed"))),
+  downloadWorkspaceExport: vi.fn(() => Promise.resolve()),
 }));
+vi.mock("@/lib/clause-outline", () => ({ downloadExtractedData: vi.fn(() => Promise.resolve()) }));
 vi.mock("@/lib/original-structure", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/original-structure")>()),
   getOriginalStructure: vi.fn(() =>
@@ -111,6 +128,12 @@ function dataset(id: string, name: string, role: StagingDataset["role"], records
   return { dataset_id: id, display_name: name, cardinality: "repeating", role, description: null, columns, records, identity_fields: [] };
 }
 
+/** The same document without a FAR Data table: it opens on the tab last used. */
+function notFarWorkbook(): StagingWorkbook {
+  const base = workbook();
+  return { ...base, datasets: base.datasets.filter((dataset) => dataset.dataset_id !== "far_records") } as StagingWorkbook;
+}
+
 function workbook(): StagingWorkbook {
   return {
     document_id: "d1",
@@ -185,6 +208,8 @@ describe("DocumentWorkspace with a profile-declared presentation", () => {
 
   it("opens Custom export from Smart View too", async () => {
     window.localStorage.setItem("dx-workspace-mode", "smart");
+    const staging = await import("@/lib/staging-workbook");
+    vi.mocked(staging.getStagingWorkbook).mockResolvedValueOnce(notFarWorkbook());
     render(<DocumentWorkspace documentId="d1" />);
     await screen.findByTestId("smart-workspace");
     fireEvent.click(screen.getByTestId("export-menu-trigger"));
@@ -194,24 +219,59 @@ describe("DocumentWorkspace with a profile-declared presentation", () => {
     expect(screen.getByRole("dialog", { name: "Custom export" })).toBeTruthy();
   });
 
-  it("opens on Original Structure, the first view, when no view was chosen", async () => {
-    window.localStorage.removeItem("dx-workspace-mode");
+  it("exports every section with its full text, falling back to Original File for a document without sections", async () => {
+    const outline = await import("@/lib/clause-outline");
+    const verification = await import("@/lib/verification");
     render(<DocumentWorkspace documentId="d1" />);
-    await screen.findByTestId("original-structure");
-    // Original Structure first, Summary last; Tables and Oracle only when used.
+    await screen.findAllByRole("tab");
+    fireEvent.click(screen.getByTestId("export-menu-trigger"));
+    fireEvent.click(screen.getByTestId("export-full-document"));
+    await waitFor(() => expect(outline.downloadExtractedData).toHaveBeenCalledWith("d1", expect.any(String)));
+    expect(verification.downloadWorkspaceExport).not.toHaveBeenCalled();
+    vi.mocked(outline.downloadExtractedData).mockRejectedValueOnce(new Error("The Excel export failed (409)."));
+    fireEvent.click(screen.getByTestId("export-menu-trigger"));
+    fireEvent.click(screen.getByTestId("export-full-document"));
+    await waitFor(() => expect(verification.downloadWorkspaceExport).toHaveBeenCalledWith("d1", "original", expect.any(String)));
+  });
+
+  it("opens a FAR Part on its FAR Data table, whatever tab was used last; a tab picked then applies", async () => {
+    window.localStorage.setItem("dx-workspace-mode", "business");
+    render(<DocumentWorkspace documentId="d1" />);
+    const views = await screen.findByRole("tablist", { name: "Document workspace" });
+    expect(within(views).getByRole("tab", { name: "Advanced Grid" })).toHaveAttribute("aria-selected", "true");
+    expect(await screen.findByRole("checkbox", { name: "Select record 52.202-1" })).toBeTruthy();
+    fireEvent.click(within(views).getByRole("tab", { name: "Smart Review" }));
+    expect(within(views).getByRole("tab", { name: "Smart Review" })).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("opens on Smart Review, the first view, when no view was chosen or the stored one is gone", async () => {
+    // A browser that last used the removed Original File tab.
+    window.localStorage.setItem("dx-workspace-mode", "original");
+    // Not a FAR Part: a FAR Part opens on its table instead.
+    const staging = await import("@/lib/staging-workbook");
+    vi.mocked(staging.getStagingWorkbook).mockResolvedValueOnce(notFarWorkbook());
+    render(<DocumentWorkspace documentId="d1" />);
+    // Smart Review first, Summary last; Tables and Oracle only when used.
+    await screen.findByRole("tablist", { name: "Document workspace" });
     const views = screen.getByRole("tablist", { name: "Document workspace" });
     expect(within(views).getAllByRole("tab").map((tab) => tab.textContent)).toEqual([
-      "Original File",
       "Smart Review",
-      "Advanced Grid",
       "Validation",
       "Oracle / Mapping",
-      "History",
-      "Summary",
     ]);
-    expect(within(views).getByRole("tab", { name: "Original File" })).toHaveAttribute("aria-selected", "true");
-    fireEvent.click(screen.getByRole("button", { name: /More views/ }));
-    expect(screen.getAllByRole("menuitem").map((item) => item.textContent)).toEqual([expect.stringContaining("Smart View")]);
+    expect(within(views).getByRole("tab", { name: "Smart Review" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.queryByRole("button", { name: /More views/ })).toBeNull();
+  });
+
+  it("does not reopen a view that is no longer a tab because the browser remembered it", async () => {
+    rememberAnyView = false;
+    window.localStorage.setItem("dx-workspace-mode", "advanced");
+    const staging = await import("@/lib/staging-workbook");
+    vi.mocked(staging.getStagingWorkbook).mockResolvedValueOnce(notFarWorkbook());
+    render(<DocumentWorkspace documentId="d1" />);
+    const views = await screen.findByRole("tablist", { name: "Document workspace" });
+    expect(within(views).getByRole("tab", { name: "Smart Review" })).toHaveAttribute("aria-selected", "true");
+    expect(within(views).queryByRole("tab", { name: "Advanced Grid" })).toBeNull();
   });
 
   it("Export menu: scope summary, Export Selected disabled until selection, Oracle toggle", async () => {
@@ -233,8 +293,12 @@ describe("DocumentWorkspace with a profile-declared presentation", () => {
     expect(within(openMenu).getByText(/\d+ cell/)).toBeTruthy();
     expect((within(openMenu).getByRole("menuitem", { name: "Excel" }) as HTMLButtonElement).disabled).toBe(false);
 
-    fireEvent.click(screen.getByTestId("toggle-oracle-panel"));
-    expect(screen.getByTestId("oracle-integration-panel")).toBeTruthy();
+    // Oracle has one home, the Oracle / Mapping tab: the Export menu opens it with the preview showing.
+    expect(screen.queryByTestId("toggle-oracle-panel")).toBeNull();
+    expect(screen.queryByTestId("map-to-oracle")).toBeNull();
+    fireEvent.click(within(openMenu).getByRole("menuitem", { name: /Open Oracle preview/ }));
+    expect(await screen.findByTestId("oracle-tab")).toBeTruthy();
+    expect(await screen.findByTestId("oracle-integration-panel")).toBeTruthy();
   });
 
   it("names a records tab after its dataset (a FAR Part's table is its FAR Data)", async () => {

@@ -7,6 +7,7 @@ import { ArrowRight, FileCheck2, ShieldCheck, Sparkles } from "lucide-react";
 import DocumentResultsTable from "@/components/document-results-table";
 import HeroShowcase from "@/components/illustrations/hero-showcase";
 import ContentSection from "@/components/layout/ContentSection";
+import CapabilityBand from "@/components/marketing/capability-band";
 import ComparisonSection from "@/components/marketing/comparison-section";
 import ConfidenceReviewSection from "@/components/marketing/confidence-review-section";
 import FeatureStack from "@/components/marketing/feature-stack";
@@ -99,6 +100,8 @@ export default function HomePage() {
       />
 
       <LogoMarquee tone="light" />
+
+      <CapabilityBand />
 
       <section className="marketing-band statement-band">
         <div className="marketing-band-inner">
