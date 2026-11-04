@@ -1,0 +1,38 @@
+name: Deploy to Vercel (Consult America)
+
+# Deploys every push to the company Vercel project "dataomatix".
+# main -> production (dataomatix.com); any other branch -> preview.
+# Uses a Consult America team token, so it works for every committer
+# regardless of whose GitHub account is linked to Vercel.
+
+on:
+  push:
+    branches: ["**"]
+  workflow_dispatch: {}
+
+concurrency:
+  group: vercel-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy
+        id: deploy
+        run: |
+          if [ "${GITHUB_REF_NAME}" = "main" ]; then PROD="--prod"; else PROD=""; fi
+          URL=$(npx --yes vercel@latest deploy $PROD --yes \
+            --token="${{ secrets.VERCEL_TOKEN }}" \
+            --meta githubCommitSha="${GITHUB_SHA}" \
+            --meta githubCommitRef="${GITHUB_REF_NAME}" \
+            --meta githubCommitAuthorLogin="${GITHUB_ACTOR}")
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+          echo "Deployed: $URL" >> "$GITHUB_STEP_SUMMARY"
