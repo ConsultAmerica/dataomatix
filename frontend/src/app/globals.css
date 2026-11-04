@@ -530,8 +530,19 @@ body {
   line-height: 1;
 }
 
-.da-logo-mark {
+.da-logo-mark,
+.da-logo-word {
   flex-shrink: 0;
+  display: block;
+}
+
+.da-logo-mark img,
+.da-logo-word img {
+  max-width: 100%;
+  height: auto;
+}
+
+.da-logo-art-light {
   display: block;
 }
 
@@ -543,109 +554,22 @@ body {
   background: var(--border);
 }
 
-.da-logo-text {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 0.32rem;
+/* Each piece has a light and a dark version; one shows at a time. */
+.da-logo-art-dark,
+.da-logo-on-dark .da-logo-art-light,
+:root[data-theme="dark"] .da-logo-on-light .da-logo-art-light,
+.dark .da-logo-on-light .da-logo-art-light {
+  display: none;
 }
 
-.da-logo-word {
-  display: inline-flex;
-  align-items: baseline;
-  font-family: var(--font-display), var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
-  font-size: calc(var(--da-logo-size, 34px) * 0.56);
-  font-weight: 800;
-  letter-spacing: -0.035em;
-}
-
-.da-logo-o {
-  background: linear-gradient(160deg, #ffb547 0%, #f7931e 45%, #f26b0a 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-
-.da-logo-matix {
-  position: relative;
-  background: linear-gradient(160deg, #2f86f0 0%, #1565d8 60%, #0d47a8 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-
-/* The orange upturn under "ix" */
-.da-logo-swoosh {
-  position: absolute;
-  right: -0.1em;
-  bottom: -0.1em;
-  width: 1em;
-  height: 0.24em;
-  color: #f7931e;
-  overflow: visible;
-}
-
-/* "— DOCUMENT INTELLIGENCE —": the rules take whatever width the word leaves. */
-.da-logo-tag {
-  display: flex;
-  align-items: center;
-  gap: 0.45em;
-  font-size: calc(var(--da-logo-size, 34px) * 0.18);
-  font-weight: 600;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-.da-logo-tag::before,
-.da-logo-tag::after {
-  content: "";
-  flex: 1 1 0.6em;
-  min-width: 0.6em;
-  height: 1px;
-  background: currentColor;
-  opacity: 0.55;
-}
-
-.da-logo-on-light .da-logo-data {
-  color: #0b2a5b;
-}
-
-.da-logo-on-light .da-logo-tag {
-  color: #5b6577;
-}
-
-.da-logo-on-dark .da-logo-data {
-  color: var(--text-on-dark);
-}
-
-.da-logo-on-dark .da-logo-matix {
-  background: linear-gradient(160deg, #8cc4ff 0%, #4d9cff 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-}
-
-.da-logo-on-dark .da-logo-tag {
-  color: rgba(247, 250, 250, 0.68);
+.da-logo-on-dark .da-logo-art-dark,
+:root[data-theme="dark"] .da-logo-on-light .da-logo-art-dark,
+.dark .da-logo-on-light .da-logo-art-dark {
+  display: block;
 }
 
 .da-logo-on-dark .da-logo-divider {
-  background: rgba(255, 255, 255, 0.25);
-}
-
-:root[data-theme="dark"] .da-logo-on-light .da-logo-data,
-.dark .da-logo-on-light .da-logo-data {
-  color: var(--text-dark);
-}
-
-@media (max-width: 1180px) and (min-width: 1024px) {
-  .da-logo-tag {
-    display: none;
-  }
-}
-
-.workspace-topbar .da-logo-tag {
-  display: none;
+  background: rgba(255, 255, 255, 0.2);
 }
 
 /* Phones: the workspace bar keeps the wordmark; the icon and divider step aside
@@ -653,12 +577,6 @@ body {
 @media (max-width: 520px) {
   .workspace-topbar .da-logo-mark,
   .workspace-topbar .da-logo-divider {
-    display: none;
-  }
-}
-
-@media (max-width: 420px) {
-  .da-logo-tag {
     display: none;
   }
 }
