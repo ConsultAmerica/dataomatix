@@ -64,16 +64,21 @@ export default function CapabilityBand() {
   return (
     <section className="marketing-band" aria-labelledby="capabilities-title" data-testid="capability-band">
       <div className="marketing-band-inner">
-        <div className="mx-auto max-w-2xl text-center">
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#b4530a]">How it works</p>
-          <h2 id="capabilities-title" className="mt-2 text-balance text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
-            From a stack of pages to data you can trust
-          </h2>
+        <div className="grid items-center gap-8 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.15fr)] lg:gap-12">
+          <div className="max-w-xl text-left">
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#b4530a]">How it works</p>
+            <h2 id="capabilities-title" className="mt-2 text-balance text-2xl font-semibold tracking-tight text-foreground sm:text-3xl lg:text-4xl">
+              From a stack of pages to data you can trust
+            </h2>
+            <p className="mt-3 max-w-md text-sm leading-relaxed text-text-secondary sm:text-base">
+              Upload a stack of pages; DataOMatix recognizes fields on the page and turns them into structured values you can review and export.
+            </p>
+          </div>
+          <div className="capability-recognition mx-auto w-full max-w-xl sm:max-w-2xl lg:mx-0 lg:justify-self-end" aria-hidden="true">
+            <RecognitionScene />
+          </div>
         </div>
-        <div className="capability-recognition mx-auto mt-8 hidden max-w-md sm:block" aria-hidden="true">
-          <RecognitionScene />
-        </div>
-        <ol className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <ol className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
           {CAPABILITIES.map((capability, index) => {
             const Icon = capability.icon;
             return (

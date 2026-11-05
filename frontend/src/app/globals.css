@@ -2850,14 +2850,20 @@ thead:hover .col-check,
 /* Recognition scene on light marketing bands: soft card, darker grid. */
 .capability-recognition {
   position: relative;
-  border-radius: 1.35rem;
-  padding: 1rem 1.25rem 0.5rem;
+  border-radius: 1.5rem;
+  padding: 1.35rem 1.5rem 0.85rem;
   background:
     radial-gradient(ellipse 70% 60% at 50% 40%, rgba(47, 134, 240, 0.1), transparent 70%),
     linear-gradient(165deg, #eef5ff 0%, #f7fafc 48%, #fff6ec 100%);
   border: 1px solid rgba(219, 231, 251, 0.95);
   box-shadow: var(--shadow-soft);
   overflow: hidden;
+}
+
+@media (min-width: 1024px) {
+  .capability-recognition {
+    padding: 1.75rem 1.85rem 1.1rem;
+  }
 }
 
 .capability-recognition::before {

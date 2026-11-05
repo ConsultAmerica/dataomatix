@@ -11,8 +11,8 @@
 
   position: relative;
   width: 100%;
-  max-width: 22rem;
-  aspect-ratio: 1.05 / 1;
+  max-width: 34rem;
+  aspect-ratio: 1.08 / 1;
   margin: 0 auto;
   pointer-events: none;
   isolation: isolate;
@@ -480,7 +480,7 @@
   }
 
   .scene {
-    max-width: 15.5rem;
+    max-width: 20rem;
   }
 }
 
