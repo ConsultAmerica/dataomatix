@@ -26,7 +26,12 @@ from app.source_structure.pdf_structure import (
     native_words,
     ocr_skew_slope,
 )
-from app.source_structure.text_shapes import infer_value_type, label_rejection
+from app.source_structure.text_shapes import (
+    format_choice_field_name,
+    infer_value_type,
+    is_fragment_option_label,
+    label_rejection,
+)
 from app.staging.resolver import resolve_and_persist_profile
 
 client = TestClient(app)
@@ -53,6 +58,25 @@ def test_noun_phrase_labels_are_accepted(label):
 )
 def test_clause_shaped_labels_are_rejected(label):
     assert label_rejection(label) is not None
+
+
+@pytest.mark.parametrize(
+    "option",
+    ["is", "is not required.", "are", "is not", "not"],
+)
+def test_sf_tick_fragments_are_not_standalone_field_names(option):
+    assert is_fragment_option_label(option)
+    assert format_choice_field_name(option, "An offer guarantee") != option.rstrip(".,;")
+    assert "offer guarantee" in format_choice_field_name(option, "An offer guarantee").lower()
+
+
+@pytest.mark.parametrize(
+    "option",
+    ["YES", "NO", "NEGOTIATED (RFP)", "SEALED BID (IFB)", "Negotiated"],
+)
+def test_proper_choice_options_keep_their_printed_label(option):
+    assert not is_fragment_option_label(option)
+    assert format_choice_field_name(option, "TYPE OF SOLICITATION") == option
 
 
 @pytest.mark.parametrize(

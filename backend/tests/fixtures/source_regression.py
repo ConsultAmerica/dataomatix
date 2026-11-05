@@ -137,8 +137,8 @@ DOCS: tuple[Doc, ...] = (
             Choice(1, "2", "SEALED BID (IFB)", "Not Selected"),
             Choice(1, "12A", "YES", "Selected"),
             Choice(1, "12A", "NO", "Not Selected"),
-            # Printed "X is,  [ ] is not required." (corrected: the option
-            # labels are the printed words beside each tick box).
+            # Printed "X is,  [ ] is not required." — option words fold into
+            # the letter caption ("An offer guarantee is") for Field Name.
             Choice(1, "13B", "is", "Selected"),
             Choice(1, "13B", "is not required", "Not Selected"),
         ),

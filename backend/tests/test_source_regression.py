@@ -147,9 +147,20 @@ def test_printed_field(key, expected) -> None:
     )
 
 
+def _option_name_matches(field: dict, option: str) -> bool:
+    """Match a choice by its printed option text, including caption-folded
+    names such as ``An offer guarantee is`` for the option ``is``."""
+
+    name = _key(field.get("field_name") or field.get("label") or "")
+    opt = _key(option)
+    if not name or not opt:
+        return False
+    return name == opt or name.endswith(f" {opt}")
+
+
 @pytest.mark.parametrize(("key", "expected"), list(_cases("choices")))
 def test_selection_box(key, expected) -> None:
-    """A selection box keeps its printed option label and a definite state."""
+    """A selection box keeps a readable option name and a definite state."""
 
     data = built(key)
     hits = [
@@ -157,12 +168,14 @@ def test_selection_box(key, expected) -> None:
         # "12A" printed as one box or as item 12, sub-item A: either matches.
         if f.get("page") == expected.page
         and _key(expected.item) in {_item_number(f), _item_number(f) + _key(f.get("sub_item"))}
-        and _key(expected.option) in {_key(f.get("field_name")), _key(f.get("label"))}
+        and _option_name_matches(f, expected.option)
     ]
-    # Shown on screen and in Excel under its full printed option label.
-    if hits:
-        assert _key(hits[0].get("field_name") or hits[0].get("label")) == _key(expected.option)
     assert len(hits) == 1, f"option {expected.option!r} of item {expected.item}: {len(hits)} fields"
+    name = hits[0].get("field_name") or hits[0].get("label") or ""
+    # Clause fragments must not stand alone as the Field Name.
+    if expected.option.lower() in {"is", "is not required", "are", "are not"}:
+        assert _key(name) != _key(expected.option), f"fragment left as field name: {name!r}"
+        assert len(name) > len(expected.option) + 2
     assert _norm(hits[0].get("choice")) == expected.state
 
 

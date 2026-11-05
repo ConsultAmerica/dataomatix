@@ -45,7 +45,7 @@ from app.source_structure.form_geometry import (
 )
 from app.source_structure.models import FieldCandidate, StructuredSourceDocument, TableCandidate, TableCell
 from app.source_structure.service import get_or_build_source_structure
-from app.source_structure.text_shapes import infer_value_type, normalize_space
+from app.source_structure.text_shapes import format_choice_field_name, infer_value_type, normalize_space
 from app.staging.validation import OCR_VERIFY_MIN_CONFIDENCE
 
 logger = logging.getLogger(__name__)
@@ -949,6 +949,10 @@ def _field_payload(item: _Field, review: StructureRecordReview | None = None, fo
         # ("(Include ZIP Code)", "(Type or print)"); the label keeps it.
         if not c.box_choice:  # an option's "(RFP)" is part of its printed label
             name = _TRAILING_INSTRUCTION.sub("", name) or name
+        if c.box_choice:
+            # Fragment options ("is", "is not required.") fold into the
+            # parent caption for display and Original File export.
+            name = format_choice_field_name(name, c.box_caption)
         payload["form_item"] = {"number": c.box_code or "", "name": name, "number_source": "printed_box" if c.box_code else "none"}
         if c.box_caption:
             # A sub-field: its item's printed caption, and its own letter.

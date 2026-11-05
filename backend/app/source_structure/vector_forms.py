@@ -37,7 +37,7 @@ from app.source_structure.pdf_structure import (
 )
 from app.source_structure.form_geometry import NOT_SELECTED, SELECTED, UNRECOGNIZED
 from app.source_structure.raster_tables import RasterGrid
-from app.source_structure.text_shapes import normalize_space
+from app.source_structure.text_shapes import format_choice_field_name, normalize_space
 
 # A stroke or filled bar thinner than this (points) is a rule.
 _THIN = 1.5
@@ -724,6 +724,7 @@ def _choice_fields(ids, page_number, rect, box: _Box, options: list[_Option], st
         own = _OWN_ITEM.match(option.label)
         if own:
             name = _TRAILING_PAREN.sub("", own.group("name")) or own.group("name")
+            name = format_choice_field_name(name, None)
             candidate = _field(
                 ids, page_number, name, "X" if option.mark else "", "ruled_form_box",
                 _union([(w.x0, w.y0, w.x1, w.y1) for w in option.words]), option.tick,
@@ -736,22 +737,30 @@ def _choice_fields(ids, page_number, rect, box: _Box, options: list[_Option], st
             result.fields.append(candidate)
             continue
         sub = None
+        # Lettered line ("B. An offer guarantee [X] is") — use the letter
+        # caption as the parent name so fragment options fold into it.
+        option_parent = parent
         line_words = [
             w for w in page_words
             if abs(w.cy - option.words[0].cy) <= 1.5 and w.x1 <= option.tick[0] + 1 and _inside((w.x0, w.y0, w.x1, w.y1), rect)
         ]
         if line_words:
             letter = _LETTER.match(" ".join(w.text for w in sorted(line_words, key=lambda w: w.x0)))
-            sub = letter.group("code") if letter else None
+            if letter:
+                sub = letter.group("code")
+                letter_name = normalize_space(letter.group("name") or "")
+                if letter_name:
+                    option_parent = letter_name
         state = option.state if not stray else UNRECOGNIZED
+        name = format_choice_field_name(option.label, option_parent)
         candidate = _field(
-            ids, page_number, option.label, "X" if option.mark else "", "ruled_form_box",
+            ids, page_number, name, "X" if option.mark else "", "ruled_form_box",
             _union([(w.x0, w.y0, w.x1, w.y1) for w in option.words]), option.tick,
             f"{'[X]' if option.mark else '[ ]'} {option.label}", extraction_method,
         )
         candidate.box_code = code
         candidate.box_rect = rect
-        candidate.box_caption = parent
+        candidate.box_caption = option_parent
         candidate.box_sub = sub
         candidate.box_choice = state
         candidate.reasons = []

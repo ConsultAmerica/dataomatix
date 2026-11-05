@@ -99,6 +99,60 @@ def label_rejection(label: str, value: str | None = None) -> str | None:
     return None
 
 
+# Option words printed beside SF tick boxes ("is", "is not required.") are
+# not field labels on their own; they complete the parent caption.
+_FRAGMENT_OPTION_START = frozenset("""is are was were am be being been not""".split())
+_PROPER_CHOICE_OPTION = re.compile(
+    r"^(yes|no|y|n|true|false|n/?a|none|other|sealed\s+bid|negotiated)(\s*\([^)]*\))?$",
+    re.I,
+)
+
+
+def is_fragment_option_label(label: str) -> bool:
+    """True when a tick-box option is a clause fragment, not a field name."""
+
+    text = normalize_space(strip_label_separator(label)).rstrip(".,;:")
+    if not text:
+        return True
+    if _PROPER_CHOICE_OPTION.match(text):
+        return False
+    # All-caps solicitation options ("NEGOTIATED (RFP)") stay as printed.
+    if text.isupper() and len(text) <= 40:
+        return False
+    words = _WORD_RE.findall(text)
+    if not words:
+        return True
+    if words[0].lower().strip(".'") in _FRAGMENT_OPTION_START:
+        return True
+    return label_rejection(text) is not None
+
+
+def format_choice_field_name(option_label: str, parent_caption: str | None = None) -> str:
+    """Readable name for a printed tick option under its form caption.
+
+    SF 1442 item 13B prints ``B. An offer guarantee [X] is, [ ] is not
+    required.`` — the option words alone are not usable Field Names; fold
+    them into the parent caption when they are fragments.
+    """
+
+    option = normalize_space(strip_label_separator(option_label)).rstrip(".,;:")
+    parent = normalize_space(strip_label_separator(parent_caption or "")).rstrip(".,;:")
+    # Drop a lettered lead from the parent if it was included ("B. …").
+    parent = re.sub(r"^[A-Z][.)]\s+", "", parent).strip()
+    if not option:
+        return parent or "Option"
+    if not is_fragment_option_label(option):
+        return option
+    if not parent:
+        return option
+    if option.lower() in parent.lower():
+        return parent[0].upper() + parent[1:] if parent and parent[0].islower() else parent
+    if parent.lower().endswith(option.lower()):
+        return parent[0].upper() + parent[1:] if parent[0].islower() else parent
+    combined = f"{parent} {option}"
+    return combined[0].upper() + combined[1:] if combined[0].islower() else combined
+
+
 _LIST_MARKER = re.compile(r"^\(?([a-z]|\d{1,2}|[ivx]{1,4})[.)]$", re.I)
 
 
