@@ -5,7 +5,7 @@ import { AlertTriangle, ExternalLink, Loader2, RefreshCw } from "lucide-react";
 
 import { API_URL, probeBackend } from "@/lib/api";
 
-const RENDER_DASHBOARD_URL = "https://dashboard.render.com/";
+const RENDER_SERVICE_URL = "https://dashboard.render.com/web/srv-dblotuk9v7es73cu9dpg";
 
 export default function BackendStatusBanner() {
   const [checking, setChecking] = useState(true);
@@ -53,15 +53,15 @@ export default function BackendStatusBanner() {
                 <li>
                   Open the{" "}
                   <a
-                    href={RENDER_DASHBOARD_URL}
+                    href={RENDER_SERVICE_URL}
                     target="_blank"
                     rel="noreferrer"
                     className="inline-flex items-center gap-1 text-primary hover:underline"
                   >
-                    Render dashboard
+                    backend service on Render
                     <ExternalLink className="h-3 w-3" />
-                  </a>{" "}
-                  and select <strong>data-agent-backend</strong>.
+                  </a>
+                  .
                 </li>
                 <li>
                   If the service is <strong>Suspended</strong>, click Resume. If deploy
