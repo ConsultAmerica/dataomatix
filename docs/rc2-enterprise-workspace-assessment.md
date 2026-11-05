@@ -4,7 +4,7 @@
 **Status:** Assessment approved; **RC2-01 implemented locally** — see `docs/rc2-01-completion-report.md`  
 **Date:** 2026-10-08 (assessment); RC2-01 completed same day  
 **Scope:** Assessment was read-only; RC2-01 implementation followed approval.  
-**Live references:** [Frontend](https://data-agent-ca.vercel.app/) · [API](https://data-agent-backend-qbmc.onrender.com/) · [Architecture](https://data-agent-ca.vercel.app/architecture)  
+**Live references:** [Frontend](https://data-agent-ca.vercel.app/) · [API](https://dataomatix-backend.onrender.com/) · [Architecture](https://data-agent-ca.vercel.app/architecture)  
 **Source of truth:** repository code (not assumptions from live URLs alone)
 
 ---

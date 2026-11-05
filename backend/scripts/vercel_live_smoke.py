@@ -12,7 +12,7 @@ import httpx
 from PIL import Image, ImageDraw, ImageFont
 
 FRONTEND = "https://dataomatix.vercel.app"
-API = "https://data-agent-backend-qbmc.onrender.com"
+API = "https://dataomatix-backend.onrender.com"
 ORIGIN = FRONTEND
 
 

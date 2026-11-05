@@ -55,7 +55,7 @@ describe("probeBackend", () => {
     vi.resetModules();
     vi.stubEnv(
       "NEXT_PUBLIC_API_URL",
-      "https://data-agent-backend-qbmc.onrender.com",
+      "https://dataomatix-backend.onrender.com",
     );
 
     const fetchMock = vi.fn().mockResolvedValue({ ok: false, status: 404 });
@@ -67,7 +67,7 @@ describe("probeBackend", () => {
     expect(result.state).toBe("unavailable");
     if (result.state === "unavailable") {
       expect(result.retryable).toBe(false);
-      expect(result.message).toContain("data-agent-backend-qbmc");
+      expect(result.message).toContain("dataomatix-backend");
     }
     expect(fetchMock).toHaveBeenCalledTimes(1);
 

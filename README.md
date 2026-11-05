@@ -6,8 +6,8 @@ It retrieves evidence, extracts with explainable confidence, routes fields for h
 | | |
 |---|---|
 | **Live frontend** | https://dataomatix.vercel.app |
-| **Live API** | https://data-agent-backend-qbmc.onrender.com |
-| **Health / Ready** | [/health](https://data-agent-backend-qbmc.onrender.com/health) · [/ready](https://data-agent-backend-qbmc.onrender.com/ready) |
+| **Live API** | https://dataomatix-backend.onrender.com |
+| **Health / Ready** | [/health](https://dataomatix-backend.onrender.com/health) · [/ready](https://dataomatix-backend.onrender.com/ready) |
 | **Architecture (in-app)** | [/architecture](https://dataomatix.vercel.app/architecture) |
 
 ---

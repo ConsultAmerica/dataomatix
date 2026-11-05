@@ -21,7 +21,7 @@ from typing import Any
 import fitz
 import httpx
 
-BASE = os.environ.get("RC_SMOKE_BASE", "https://data-agent-backend-qbmc.onrender.com")
+BASE = os.environ.get("RC_SMOKE_BASE", "https://dataomatix-backend.onrender.com")
 FRONTEND = os.environ.get("RC_SMOKE_FRONTEND", "https://dataomatix.vercel.app")
 
 

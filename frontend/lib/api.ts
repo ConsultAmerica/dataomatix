@@ -30,7 +30,7 @@ function isRenderBackend(): boolean {
 // Derived from the actual configured API_URL rather than hardcoded, so
 // this never goes stale again when the backend is repointed at a
 // different Render service (as happened moving off data-agent-backend
-// onto data-agent-backend-qbmc).
+// onto dataomatix-backend).
 function renderServiceName(): string {
   try {
     return new URL(API_URL).hostname.split(".")[0];

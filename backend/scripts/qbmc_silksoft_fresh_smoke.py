@@ -10,7 +10,7 @@ from io import BytesIO
 import httpx
 from PIL import Image, ImageDraw, ImageFont
 
-BASE = "https://data-agent-backend-qbmc.onrender.com"
+BASE = "https://dataomatix-backend.onrender.com"
 
 
 def _font(size: int = 28):
